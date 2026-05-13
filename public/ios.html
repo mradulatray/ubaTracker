@@ -1,0 +1,65 @@
+<html>
+<head>
+    <title>iOS Events</title>
+
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+
+<div class="navbar">
+    <a href="/">Home</a>
+    <a href="/android.html">Android</a>
+    <a href="/msite.html">Msite</a>
+    <a href="/grouped.html">Grouped</a>
+</div>
+
+<h2>📱 iOS Events</h2>
+
+<table>
+
+<thead>
+<tr>
+    <th>#</th>
+    <th>Event</th>
+    <th>Page</th>
+    <th>Action</th>
+</tr>
+</thead>
+
+<tbody id="tableBody"></tbody>
+
+</table>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/common.js"></script>
+
+<script>
+
+function render() {
+
+    const body = document.getElementById("tableBody");
+
+    body.innerHTML = "";
+
+    const iosEvents = allEvents.filter(
+        e => getPlatform(e.appId) === "ios"
+    );
+
+    iosEvents.forEach((e, i) => {
+
+        body.innerHTML += `
+        <tr>
+            <td>${i + 1}</td>
+            <td>${e.eventName || "-"}</td>
+            <td>${e.pageName || "-"}</td>
+            <td>${e.actionLabel || "-"}</td>
+        </tr>
+        `;
+    });
+}
+
+</script>
+
+</body>
+</html>

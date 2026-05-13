@@ -1,0 +1,98 @@
+<html>
+<head>
+
+<title>Grouped Events</title>
+
+<link rel="stylesheet" href="/css/style.css">
+
+</head>
+
+<body>
+
+<div class="navbar">
+
+<a href="/">Home</a>
+<a href="/ios.html">iOS</a>
+<a href="/android.html">Android</a>
+<a href="/msite.html">Msite</a>
+
+</div>
+
+<h2>📦 Grouped Events</h2>
+
+<div id="groupContainer"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/common.js"></script>
+
+<script>
+
+function render() {
+
+    const container =
+        document.getElementById("groupContainer");
+
+    container.innerHTML = "";
+
+    const grouped = {};
+
+    allEvents.forEach(event => {
+
+        const key =
+            (event.eventName || "") +
+            "_" +
+            (event.pageName || "");
+
+        if (!grouped[key]) {
+            grouped[key] = [];
+        }
+
+        grouped[key].push(event);
+    });
+
+    Object.keys(grouped).forEach(key => {
+
+        const group = grouped[key];
+
+        const card = document.createElement("div");
+
+        card.className = "group-card";
+
+        let html = "";
+
+        html += `
+        <h3>
+            ${group[0].eventName || "-"}
+            |
+            ${group[0].pageName || "-"}
+        </h3>
+        `;
+
+        group.forEach(event => {
+
+            const platform =
+                getPlatform(event.appId);
+
+            html += `
+            <div>
+
+                <span class="platform ${platform}">
+                    ${platform.toUpperCase()}
+                </span>
+
+                ${event.actionLabel || "-"}
+
+            </div>
+            `;
+        });
+
+        card.innerHTML = html;
+
+        container.appendChild(card);
+    });
+}
+
+</script>
+
+</body>
+</html>
