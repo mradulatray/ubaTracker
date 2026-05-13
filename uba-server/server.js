@@ -1,92 +1,9 @@
-// const express = require("express");
-// const http = require("http");
-// const path = require("path");
-// const { Server } = require("socket.io");
-
-// const app = express();
-// app.use(express.static("public"));
-// const server = http.createServer(app);
-// const io = new Server(server, {
-//     cors: { origin: "*" }
-// });
-
-// const port = 3000;
-
-// app.use(express.json());
-// app.use(express.static(path.join(__dirname, "public")));
-
-// let events = [];
-
-// /* ---------------- SOCKET ---------------- */
-
-// io.on("connection", (socket) => {
-//     console.log("🟢 Client connected");
-
-//     socket.emit("initialData", events);
-// });
-
-// /* ---------------- RECEIVE EVENTS ---------------- */
-
-// app.post("/uba", (req, res) => {
-
-//     const payload = req.body;
-
-//     if (Array.isArray(payload.events)) {
-
-//         payload.events.forEach(ev => {
-
-//             ev.serverTimestamp = new Date();
-
-//             ev.appId = payload.appId || "";
-//             ev.deviceType = payload.deviceType || "";
-
-//             events.push(ev);
-
-//             io.emit("newEvent", ev);
-//         });
-
-//     } else {
-
-//         payload.serverTimestamp = new Date();
-
-//         events.push(payload);
-
-//         io.emit("newEvent", payload);
-//     }
-
-//     res.send({ status: "ok" });
-// });
-
-// /* ---------------- CLEAR ---------------- */
-
-// app.delete("/clear", (req, res) => {
-
-//     events = [];
-
-//     io.emit("clearEvents");
-
-//     res.send({ status: "cleared" });
-// });
-
-// /* ---------------- API ---------------- */
-
-// app.get("/api/events", (req, res) => {
-//     res.json(events);
-// });
-
-// /* ---------------- START ---------------- */
-
-// server.listen(port, "0.0.0.0", () => {
-//     console.log("🚀 Server running on port", port);
-// });
-
-
-
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 
 const app = express();
+
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -95,7 +12,7 @@ const io = new Server(server, {
 
 const port = 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
 
 let events = [];
 
@@ -118,9 +35,18 @@ app.post("/uba", (req, res) => {
 
         payload.events.forEach(ev => {
 
-            ev.serverTimestamp = new Date();
-            ev.appId = payload.appId || "";
-            ev.deviceType = payload.deviceType || "";
+            ev.serverTimestamp =
+                new Date().toLocaleString();
+
+            ev.appId =
+                payload.appId ||
+                ev.appId ||
+                "";
+
+            ev.deviceType =
+                payload.deviceType ||
+                ev.deviceType ||
+                "";
 
             events.push(ev);
 
@@ -129,7 +55,8 @@ app.post("/uba", (req, res) => {
 
     } else {
 
-        payload.serverTimestamp = new Date();
+        payload.serverTimestamp =
+            new Date().toLocaleString();
 
         events.push(payload);
 
@@ -150,144 +77,184 @@ app.delete("/clear", (req, res) => {
     res.send({ status: "cleared" });
 });
 
+/* ---------------- EXPORT API ---------------- */
+
+app.get("/api/events", (req, res) => {
+
+    res.json(events);
+});
+
 /* ---------------- UI ---------------- */
 
 app.get("/", (req, res) => {
 
 res.send(`
 
+<!DOCTYPE html>
+
 <html>
 
 <head>
 
-<title>UBA Validator</title>
+<meta charset="UTF-8">
+
+<title>UBA Validator Dashboard</title>
 
 <style>
 
 body {
     font-family: Arial;
     padding: 20px;
+    background: #f5f7fb;
+}
+
+h2 {
+    margin-bottom: 10px;
 }
 
 textarea {
     width: 100%;
     padding: 10px;
     margin-bottom: 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
 }
 
 input {
-    padding: 8px;
-    width: 300px;
-    margin-bottom: 10px;
+    padding: 10px;
+    width: 350px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
 }
 
 button {
-    padding: 8px 12px;
+    padding: 9px 14px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
     margin-right: 8px;
     margin-bottom: 8px;
-    cursor: pointer;
-}
-
-.active-tab {
     background: #007bff;
     color: white;
 }
 
-.filter-btn.active {
-    background: #28a745;
+button:hover {
+    opacity: 0.9;
+}
+
+.active-tab {
+    background: #111827;
     color: white;
 }
 
+.filter-btn.active {
+    background: #16a34a;
+}
+
 table {
-    border-collapse: collapse;
     width: 100%;
-    table-layout: fixed;
+    border-collapse: collapse;
+    background: white;
 }
 
 th, td {
-    border: 1px solid #ccc;
-    padding: 8px;
-    word-wrap: break-word;
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: left;
+    font-size: 14px;
 }
 
 th {
-    background: #f4f4f4;
+    background: #f3f4f6;
+    position: sticky;
+    top: 0;
 }
 
 tr:hover {
-    background: #eef7ff;
-    cursor: pointer;
+    background: #eef6ff;
 }
 
 .match {
-    background: #d4edda;
+    background: #dcfce7;
 }
 
 .mismatch {
-    background: #f8d7da;
+    background: #fee2e2;
 }
 
 .stats {
-    margin-bottom: 20px;
+    margin: 20px 0;
 }
 
 .stat-box {
     display: inline-block;
-    padding: 12px;
-    margin-right: 10px;
+    padding: 14px;
     border-radius: 8px;
     color: white;
+    margin-right: 10px;
     min-width: 120px;
+    text-align: center;
 }
 
-.total-box { background: #007bff; }
-.match-box { background: #28a745; }
-.mismatch-box { background: #dc3545; }
-.normal-box { background: #6c757d; }
+.total-box {
+    background: #2563eb;
+}
+
+.match-box {
+    background: #16a34a;
+}
+
+.mismatch-box {
+    background: #dc2626;
+}
+
+.normal-box {
+    background: #6b7280;
+}
 
 .modal {
     display: none;
     position: fixed;
+    z-index: 999;
     left: 0;
     top: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.5);
+    overflow: auto;
+    background: rgba(0,0,0,0.6);
 }
 
 .modal-content {
     background: white;
-    margin: 5% auto;
+    margin: 4% auto;
     padding: 20px;
-    width: 80%;
-    max-height: 80%;
-    overflow: auto;
-    border-radius: 8px;
+    width: 85%;
+    border-radius: 10px;
+    max-height: 85vh;
+    overflow-y: auto;
 }
 
 .close {
     float: right;
-    font-size: 22px;
+    font-size: 28px;
     cursor: pointer;
 }
 
 pre {
-    background: #f4f4f4;
-    padding: 10px;
+    background: #f3f4f6;
+    padding: 12px;
+    border-radius: 6px;
     overflow-x: auto;
 }
 
 .diff-match {
     color: green;
+    margin-bottom: 6px;
 }
 
 .diff-mismatch {
     color: red;
-    font-weight: bold;
-}
-
-.tab-btn {
-    font-size: 15px;
+    margin-bottom: 10px;
 }
 
 .group-yes {
@@ -300,6 +267,14 @@ pre {
     font-weight: bold;
 }
 
+.shareBtn {
+    background: #111827;
+}
+
+.controls {
+    margin-bottom: 15px;
+}
+
 </style>
 
 </head>
@@ -310,22 +285,22 @@ pre {
 
 <!-- TABS -->
 
-<button class="tab-btn active-tab" id="iosTab"
+<button class="tab-btn active-tab"
 onclick="switchTab(event,'ios')">
 📱 iOS
 </button>
 
-<button class="tab-btn" id="androidTab"
+<button class="tab-btn"
 onclick="switchTab(event,'android')">
 🤖 Android
 </button>
 
-<button class="tab-btn" id="msiteTab"
+<button class="tab-btn"
 onclick="switchTab(event,'msite')">
 🌐 Msite
 </button>
 
-<button class="tab-btn" id="groupedTab"
+<button class="tab-btn"
 onclick="switchTab(event,'grouped')">
 🧩 Grouped
 </button>
@@ -334,7 +309,11 @@ onclick="switchTab(event,'grouped')">
 
 <h3>Expected JSON</h3>
 
-<textarea id="expectedInput" rows="6"></textarea>
+<textarea
+id="expectedInput"
+rows="6"
+placeholder='[{"eventName":"click","pageName":"home"}]'>
+</textarea>
 
 <button onclick="updateExpected()">
 Update Expected
@@ -352,36 +331,38 @@ Update Expected
 📥 Export JSON
 </button>
 
-<br/><br/>
-
 <div class="stats">
 
 <div class="stat-box total-box">
-Total<br/>
-<span id="totalCount">0</span>
+<div>Total</div>
+<div id="totalCount">0</div>
 </div>
 
 <div class="stat-box match-box">
-Matched<br/>
-<span id="matchCount">0</span>
+<div>Matched</div>
+<div id="matchCount">0</div>
 </div>
 
 <div class="stat-box mismatch-box">
-Mismatch<br/>
-<span id="mismatchCount">0</span>
+<div>Mismatch</div>
+<div id="mismatchCount">0</div>
 </div>
 
 <div class="stat-box normal-box">
-Normal<br/>
-<span id="normalCount">0</span>
+<div>Normal</div>
+<div id="normalCount">0</div>
 </div>
 
 </div>
 
-<input id="searchInput"
-placeholder="Search event..." />
+<div class="controls">
 
-<br/><br/>
+<input
+id="searchInput"
+placeholder="Search by event / page / action..."
+/>
+
+</div>
 
 <button class="filter-btn active"
 onclick="setFilter(event,'all')">
@@ -417,6 +398,7 @@ Normal
 <th>Action Label</th>
 <th>Action Source</th>
 <th>Action Type</th>
+<th>Platform</th>
 <th>Timestamp</th>
 <th>Share</th>
 
@@ -428,7 +410,7 @@ Normal
 
 </table>
 
-<!-- MODAL -->
+<!-- EVENT MODAL -->
 
 <div id="modal" class="modal">
 
@@ -491,7 +473,9 @@ function switchTab(e, tab) {
     currentTab = tab;
 
     document.querySelectorAll(".tab-btn")
-    .forEach(btn => btn.classList.remove("active-tab"));
+    .forEach(btn =>
+        btn.classList.remove("active-tab")
+    );
 
     e.target.classList.add("active-tab");
 
@@ -505,12 +489,12 @@ function updateExpected() {
     try {
 
         expectedEvents = JSON.parse(
-            document.getElementById("expectedInput").value
+            document.getElementById("expectedInput").value || "[]"
         );
 
         renderTable();
 
-        alert("✅ Expected updated");
+        alert("✅ Expected JSON Updated");
 
     } catch {
 
@@ -530,7 +514,7 @@ function isPageNameMatch(expectedPage, actualPage) {
         return true;
     }
 
-    return expectedPage == actualPage;
+    return String(expectedPage) === String(actualPage);
 }
 
 /* ---------------- FIND EXPECTED ---------------- */
@@ -539,16 +523,13 @@ function getMatchingExpectedEvents(event) {
 
     return expectedEvents.filter(expected => {
 
-        const isEventMatch =
-            expected.eventName === event.eventName;
-
-        const isPageMatch =
+        return (
+            expected.eventName === event.eventName &&
             isPageNameMatch(
                 expected.pageName,
                 event.pageName
-            );
-
-        return isEventMatch && isPageMatch;
+            )
+        );
     });
 }
 
@@ -556,7 +537,8 @@ function getMatchingExpectedEvents(event) {
 
 function getRowStatus(event) {
 
-    const matches = getMatchingExpectedEvents(event);
+    const matches =
+        getMatchingExpectedEvents(event);
 
     if (!matches.length) {
         return "normal";
@@ -574,7 +556,10 @@ function getRowStatus(event) {
                 return true;
             }
 
-            return match[key] == event[key];
+            return (
+                String(match[key]) ===
+                String(event[key])
+            );
         });
     });
 
@@ -588,32 +573,56 @@ function setFilter(e, type) {
     currentFilter = type;
 
     document.querySelectorAll(".filter-btn")
-    .forEach(btn => btn.classList.remove("active"));
+    .forEach(btn =>
+        btn.classList.remove("active")
+    );
 
     e.target.classList.add("active");
 
     renderTable();
 }
 
-/* ---------------- APP FILTER ---------------- */
+/* ---------------- PLATFORM ---------------- */
+
+function getPlatform(event) {
+
+    if (String(event.appId) === "22") {
+        return "iOS";
+    }
+
+    if (String(event.appId) === "21") {
+        return "Android";
+    }
+
+    if (String(event.appId) === "205") {
+        return "Msite";
+    }
+
+    return event.deviceType || "-";
+}
+
+/* ---------------- FILTER TAB ---------------- */
 
 function getCurrentTabEvents() {
 
     if (currentTab === "ios") {
-        return allEvents.filter(e =>
-            String(e.appId) == "22"
+
+        return allEvents.filter(
+            e => String(e.appId) === "22"
         );
     }
 
     if (currentTab === "android") {
-        return allEvents.filter(e =>
-            String(e.appId) == "21"
+
+        return allEvents.filter(
+            e => String(e.appId) === "21"
         );
     }
 
     if (currentTab === "msite") {
-        return allEvents.filter(e =>
-            String(e.appId) == "205"
+
+        return allEvents.filter(
+            e => String(e.appId) === "205"
         );
     }
 
@@ -650,13 +659,50 @@ function updateStats(filtered) {
     .innerText = normal;
 }
 
-/* ---------------- GROUPED ---------------- */
+/* ---------------- GROUPED TABLE ---------------- */
 
 function renderGroupedTable(tableBody) {
 
     const grouped = {};
 
-    allEvents.forEach(event => {
+    let filtered = [...allEvents];
+
+    const search = document
+        .getElementById("searchInput")
+        .value
+        .toLowerCase()
+        .trim();
+
+    if (search) {
+
+        filtered = filtered.filter(event => {
+
+            const text =
+                (
+                    (event.eventName || "") + " " +
+                    (event.pageName || "") + " " +
+                    (event.actionLabel || "") + " " +
+                    (event.actionSrc || "") + " " +
+                    (event.actionType || "")
+                )
+                .toLowerCase();
+
+            return text.includes(search);
+        });
+    }
+
+    if (currentFilter !== "all") {
+
+        filtered = filtered.filter(event => {
+
+            return (
+                getRowStatus(event) ===
+                currentFilter
+            );
+        });
+    }
+
+    filtered.forEach(event => {
 
         const key =
             (event.eventName || "") + "_" +
@@ -665,13 +711,36 @@ function renderGroupedTable(tableBody) {
         if (!grouped[key]) {
 
             grouped[key] = {
-                eventName: event.eventName,
-                pageName: event.pageName,
+
+                eventName:
+                    event.eventName || "-",
+
+                pageName:
+                    event.pageName || "-",
+
+                actionLabel:
+                    event.actionLabel || "-",
+
+                actionSrc:
+                    event.actionSrc || "-",
+
+                actionType:
+                    event.actionType || "-",
+
+                timestamp:
+                    event.serverTimestamp || "-",
+
                 ios: false,
+
                 android: false,
-                msite: false
+
+                msite: false,
+
+                rawEvents: []
             };
         }
+
+        grouped[key].rawEvents.push(event);
 
         if (String(event.appId) === "22") {
             grouped[key].ios = true;
@@ -686,47 +755,101 @@ function renderGroupedTable(tableBody) {
         }
     });
 
-    Object.values(grouped).forEach((item, i) => {
+    const groupedItems =
+        Object.values(grouped);
 
-        const row = document.createElement("tr");
+    if (!groupedItems.length) {
+
+        tableBody.innerHTML = \`
+
+        <tr>
+            <td colspan="9"
+            style="text-align:center;padding:20px;">
+                No Data Found
+            </td>
+        </tr>
+
+        \`;
+
+        updateStats([]);
+
+        return;
+    }
+
+    groupedItems.forEach((item, index) => {
+
+        const row =
+            document.createElement("tr");
 
         row.innerHTML = \`
 
-<td>\${i + 1}</td>
+<td>\${index + 1}</td>
 
-<td>\${item.eventName || "-"}</td>
+<td>\${item.eventName}</td>
 
-<td>\${item.pageName || "-"}</td>
+<td>\${item.pageName}</td>
 
-<td colspan="2">
+<td>\${item.actionLabel}</td>
+
+<td>\${item.actionSrc}</td>
+
+<td>\${item.actionType}</td>
+
+<td>
+
 iOS:
 <span class="\${item.ios ? 'group-yes' : 'group-no'}">
 \${item.ios ? 'YES' : 'NO'}
 </span>
 
-|
+<br/>
 
 Android:
 <span class="\${item.android ? 'group-yes' : 'group-no'}">
 \${item.android ? 'YES' : 'NO'}
 </span>
 
-|
+<br/>
 
 Msite:
 <span class="\${item.msite ? 'group-yes' : 'group-no'}">
 \${item.msite ? 'YES' : 'NO'}
 </span>
+
 </td>
 
-<td colspan="3">
-Grouped View
+<td>\${item.timestamp}</td>
+
+<td>
+<button class="shareBtn">
+Share
+</button>
 </td>
 
 \`;
 
+        row.addEventListener("click", (e) => {
+
+            if (
+                !e.target.classList.contains("shareBtn")
+            ) {
+
+                openModal(item.rawEvents[0]);
+            }
+        });
+
+        row.querySelector(".shareBtn")
+        .onclick = (e) => {
+
+            e.stopPropagation();
+
+            shareCurl(item.rawEvents[0]);
+        };
+
         tableBody.appendChild(row);
     });
+
+    updateStats(filtered);
 }
 
 /* ---------------- TABLE ---------------- */
@@ -734,7 +857,7 @@ Grouped View
 function renderTable() {
 
     const tableBody =
-    document.getElementById("tableBody");
+        document.getElementById("tableBody");
 
     tableBody.innerHTML = "";
 
@@ -747,31 +870,39 @@ function renderTable() {
 
     let filtered = getCurrentTabEvents();
 
-    const search =
-        document.getElementById("searchInput")
+    const search = document
+        .getElementById("searchInput")
         .value
         .toLowerCase();
 
-    filtered = filtered.filter(e =>
-        (e.eventName || "")
-        .toLowerCase()
-        .includes(search)
-    );
+    filtered = filtered.filter(e => {
+
+        const text =
+            (
+                (e.eventName || "") + " " +
+                (e.pageName || "") + " " +
+                (e.actionLabel || "") + " " +
+                (e.actionSrc || "") + " " +
+                (e.actionType || "")
+            ).toLowerCase();
+
+        return text.includes(search);
+    });
 
     if (currentFilter !== "all") {
 
-        filtered = filtered.filter(e =>
-            getRowStatus(e) === currentFilter
+        filtered = filtered.filter(
+            e => getRowStatus(e) === currentFilter
         );
     }
 
     filtered.forEach((event, i) => {
 
         const row =
-        document.createElement("tr");
+            document.createElement("tr");
 
         const status =
-        getRowStatus(event);
+            getRowStatus(event);
 
         if (status === "match") {
             row.classList.add("match");
@@ -794,6 +925,8 @@ function renderTable() {
 <td>\${event.actionSrc || "-"}</td>
 
 <td>\${event.actionType || "-"}</td>
+
+<td>\${getPlatform(event)}</td>
 
 <td>\${event.serverTimestamp || "-"}</td>
 
@@ -837,17 +970,17 @@ function openModal(event) {
 
     document.getElementById("jsonView")
     .textContent =
-    JSON.stringify(event, null, 2);
+        JSON.stringify(event, null, 2);
 
     const matches =
-    getMatchingExpectedEvents(event);
+        getMatchingExpectedEvents(event);
 
     let html = "";
 
     if (!matches.length) {
 
         html =
-        "<p>No expected data found</p>";
+            "<p>No expected data found</p>";
 
     } else {
 
@@ -871,7 +1004,8 @@ function openModal(event) {
             }
 
             if (
-                expected[key] == event[key]
+                String(expected[key]) ===
+                String(event[key])
             ) {
 
                 html += \`
@@ -884,15 +1018,10 @@ function openModal(event) {
 
                 html += \`
                 <div class="diff-mismatch">
-                ❌ \${key}
-                <br/>
-                Expected:
-                \${expected[key]}
-                <br/>
-                Actual:
-                \${event[key]}
+                ❌ \${key}<br/>
+                Expected: \${expected[key]}<br/>
+                Actual: \${event[key]}
                 </div>
-                <br/>
                 \`;
             }
         });
@@ -908,24 +1037,24 @@ function closeModal() {
     .style.display = "none";
 }
 
-/* ---------------- MISSING ---------------- */
+/* ---------------- MISSING EVENTS ---------------- */
 
 function showMissingEvents() {
 
-    const missing = expectedEvents.filter(expected => {
+    const missing =
+        expectedEvents.filter(expected => {
 
         return !allEvents.some(event => {
 
-            const isEventMatch =
-            expected.eventName === event.eventName;
+            return (
+                expected.eventName ===
+                event.eventName &&
 
-            const isPageMatch =
-            isPageNameMatch(
-                expected.pageName,
-                event.pageName
+                isPageNameMatch(
+                    expected.pageName,
+                    event.pageName
+                )
             );
-
-            return isEventMatch && isPageMatch;
         });
     });
 
@@ -934,14 +1063,14 @@ function showMissingEvents() {
     if (!missing.length) {
 
         html =
-        "<p>✅ All expected events present</p>";
+            "<p>✅ All expected events present</p>";
 
     } else {
 
         missing.forEach(item => {
 
             html += \`
-            <div style="color:red;margin-bottom:10px;">
+            <div style="margin-bottom:12px;color:red;">
             ❌ Event:
             <b>\${item.eventName}</b>
 
@@ -991,10 +1120,10 @@ function exportEvents() {
     );
 
     const url =
-    URL.createObjectURL(blob);
+        URL.createObjectURL(blob);
 
     const a =
-    document.createElement("a");
+        document.createElement("a");
 
     a.href = url;
 
@@ -1027,9 +1156,9 @@ socket.on("initialData", data => {
     renderTable();
 });
 
-socket.on("newEvent", e => {
+socket.on("newEvent", event => {
 
-    allEvents.unshift(e);
+    allEvents.unshift(event);
 
     renderTable();
 });
@@ -1060,5 +1189,6 @@ document
 
 server.listen(port, "0.0.0.0", () => {
 
-    console.log("🚀 Server running on port", port);
+    console.log("🚀 Server running on:");
+    console.log("http://localhost:3000");
 });
