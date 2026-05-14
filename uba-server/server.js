@@ -1,6 +1,7 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
+const { isStringObject } = require("util/types");
 
 const app = express();
 
@@ -13,6 +14,11 @@ const io = new Server(server, {
 const port = 3000;
 
 app.use(express.json({ limit: "50mb" }));
+
+app.use(express.urlencoded({
+  extended: true
+}));
+app.use(express.text());
 
 let events = [];
 
@@ -31,20 +37,38 @@ app.post("/uba", (req, res) => {
 
     const payload = req.body;
 
-    if (Array.isArray(payload.events)) {
 
-        payload.events.forEach(ev => {
+    console.log("\n================ NEW REQUEST ================\n");
+
+console.log("📥 Full Request Body:\n");
+
+// console.log(JSON.parse(payload, null, 2));
+
+let newPayload = payload;
+
+if (typeof payload === "string") {
+    try {
+        newPayload = JSON.parse(payload);
+    } catch (e) {
+        console.error("Payload is not valid JSON string");
+    }
+}
+console.log("\n=============================================\n");
+
+    if (Array.isArray(newPayload.events)) {
+
+        newPayload.events.forEach(ev => {
 
             ev.serverTimestamp =
                 new Date().toLocaleString();
 
             ev.appId =
-                payload.appId ||
+                newPayload.appId ||
                 ev.appId ||
                 "";
 
             ev.deviceType =
-                payload.deviceType ||
+                newPayload.deviceType ||
                 ev.deviceType ||
                 "";
 
@@ -55,12 +79,12 @@ app.post("/uba", (req, res) => {
 
     } else {
 
-        payload.serverTimestamp =
+        newPayload.serverTimestamp =
             new Date().toLocaleString();
 
-        events.push(payload);
+        events.push(newPayload);
 
-        io.emit("newEvent", payload);
+        io.emit("newEvent", newPayload);
     }
 
     res.send({ status: "ok" });
@@ -188,8 +212,8 @@ tr:hover {
 
 .stat-box {
     display: inline-block;
-    padding: 14px;
-    border-radius: 8px;
+    padding: 8px;
+    border-radius: 6px;
     color: white;
     margin-right: 10px;
     min-width: 120px;
