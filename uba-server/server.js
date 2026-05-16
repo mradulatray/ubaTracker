@@ -1,14 +1,15 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-const { isStringObject } = require("util/types");
 
 const app = express();
 
 const server = http.createServer(app);
 
 const io = new Server(server, {
-    cors: { origin: "*" }
+    cors: {
+        origin: "*"
+    }
 });
 
 const port = 3000;
@@ -16,46 +17,61 @@ const port = 3000;
 app.use(express.json({ limit: "50mb" }));
 
 app.use(express.urlencoded({
-  extended: true
+    extended: true
 }));
+
 app.use(express.text());
 
 let events = [];
 
-/* ---------------- SOCKET ---------------- */
+/* =========================================================
+   SOCKET
+========================================================= */
 
 io.on("connection", (socket) => {
 
     console.log("🟢 Client connected");
 
-    socket.emit("initialData", events);
+    socket.emit(
+        "initialData",
+        events
+    );
 });
 
-/* ---------------- RECEIVE EVENTS ---------------- */
+/* =========================================================
+   RECEIVE EVENTS
+========================================================= */
 
 app.post("/uba", (req, res) => {
 
     const payload = req.body;
 
-
     console.log("\n================ NEW REQUEST ================\n");
 
-console.log("📥 Full Request Body:\n");
+    let newPayload = payload;
 
-// console.log(JSON.parse(payload, null, 2));
+    if (typeof payload === "string") {
 
-let newPayload = payload;
+        try {
 
-if (typeof payload === "string") {
-    try {
-        newPayload = JSON.parse(payload);
-    } catch (e) {
-        console.error("Payload is not valid JSON string");
+            newPayload =
+                JSON.parse(payload);
+
+        } catch (e) {
+
+            console.error(
+                "❌ Payload is not valid JSON string"
+            );
+        }
     }
-}
-console.log("\n=============================================\n");
 
-    if (Array.isArray(newPayload.events)) {
+    console.log(newPayload);
+
+    console.log("\n=============================================\n");
+
+    if (
+        Array.isArray(newPayload.events)
+    ) {
 
         newPayload.events.forEach(ev => {
 
@@ -74,7 +90,10 @@ console.log("\n=============================================\n");
 
             events.push(ev);
 
-            io.emit("newEvent", ev);
+            io.emit(
+                "newEvent",
+                ev
+            );
         });
 
     } else {
@@ -84,13 +103,20 @@ console.log("\n=============================================\n");
 
         events.push(newPayload);
 
-        io.emit("newEvent", newPayload);
+        io.emit(
+            "newEvent",
+            newPayload
+        );
     }
 
-    res.send({ status: "ok" });
+    res.send({
+        status: "ok"
+    });
 });
 
-/* ---------------- CLEAR ---------------- */
+/* =========================================================
+   CLEAR
+========================================================= */
 
 app.delete("/clear", (req, res) => {
 
@@ -98,17 +124,23 @@ app.delete("/clear", (req, res) => {
 
     io.emit("clearEvents");
 
-    res.send({ status: "cleared" });
+    res.send({
+        status: "cleared"
+    });
 });
 
-/* ---------------- EXPORT API ---------------- */
+/* =========================================================
+   EXPORT API
+========================================================= */
 
 app.get("/api/events", (req, res) => {
 
     res.json(events);
 });
 
-/* ---------------- UI ---------------- */
+/* =========================================================
+   UI
+========================================================= */
 
 app.get("/", (req, res) => {
 
@@ -120,183 +152,345 @@ res.send(`
 
 <head>
 
-<meta charset="UTF-8">
+<meta charset="UTF-8"/>
 
 <title>UBA Validator Dashboard</title>
 
+<script src="/socket.io/socket.io.js"></script>
+
 <style>
 
-body {
-    font-family: Arial;
-    padding: 20px;
-    background: #f5f7fb;
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
 }
 
-h2 {
-    margin-bottom: 10px;
+body{
+    font-family:Arial,sans-serif;
+    background:#f4f6f9;
+    padding:20px;
+    color:#111827;
 }
 
-textarea {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 10px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
+/* ======================================================
+   HEADER
+====================================================== */
+
+.header{
+    margin-bottom:20px;
 }
 
-input {
-    padding: 10px;
-    width: 350px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
+.title{
+    font-size:30px;
+    font-weight:bold;
+    color:#111827;
 }
 
-button {
-    padding: 9px 14px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    margin-right: 8px;
-    margin-bottom: 8px;
-    background: #007bff;
-    color: white;
+/* ======================================================
+   CARD
+====================================================== */
+
+.card{
+    background:white;
+    border-radius:14px;
+    padding:18px;
+    margin-bottom:18px;
+    border:1px solid #e5e7eb;
+    box-shadow:0 2px 8px rgba(0,0,0,0.04);
 }
 
-button:hover {
-    opacity: 0.9;
+/* ======================================================
+   TOP CONTROLS
+====================================================== */
+
+.top-controls{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:15px;
+    flex-wrap:wrap;
 }
 
-.active-tab {
-    background: #111827;
-    color: white;
+.left-controls,
+.right-controls{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
 }
 
-.filter-btn.active {
-    background: #16a34a;
+/* ======================================================
+   BUTTONS
+====================================================== */
+
+button{
+    border:none;
+    cursor:pointer;
+    padding:10px 16px;
+    border-radius:10px;
+    font-size:14px;
+    transition:0.2s;
+    font-weight:600;
 }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
+button:hover{
+    opacity:0.92;
 }
 
-th, td {
-    border: 1px solid #ddd;
-    padding: 10px;
-    text-align: left;
-    font-size: 14px;
+.tab-btn{
+    background:#eef2f7;
+    color:#374151;
+    border:1px solid #d1d5db;
 }
 
-th {
-    background: #f3f4f6;
-    position: sticky;
-    top: 0;
+.active-tab{
+    background:#dbeafe;
+    color:#2563eb;
+    border:1px solid #93c5fd;
 }
 
-tr:hover {
-    background: #eef6ff;
+.primary-btn{
+    background:#2563eb;
+    color:white;
 }
 
-.match {
-    background: #dcfce7;
+.success-btn{
+    background:#10b981;
+    color:white;
 }
 
-.mismatch {
-    background: #fee2e2;
+.warning-btn{
+    background:#f59e0b;
+    color:white;
 }
 
-.stats {
-    margin: 20px 0;
+.danger-btn{
+    background:#ef4444;
+    color:white;
 }
 
-.stat-box {
-    display: inline-block;
-    padding: 8px;
-    border-radius: 6px;
-    color: white;
-    margin-right: 10px;
-    min-width: 120px;
-    text-align: center;
+.share-btn{
+    background:#111827;
+    color:white;
 }
 
-.total-box {
-    background: #2563eb;
+.filter-btn{
+    background:#f3f4f6;
+    border:1px solid #d1d5db;
+    color:#374151;
 }
 
-.match-box {
-    background: #16a34a;
+.filter-btn.active{
+    background:#2563eb;
+    color:white;
 }
 
-.mismatch-box {
-    background: #dc2626;
+/* ======================================================
+   INPUTS
+====================================================== */
+
+.search-box{
+    width:320px;
+    padding:11px;
+    border-radius:10px;
+    border:1px solid #d1d5db;
+    outline:none;
 }
 
-.normal-box {
-    background: #6b7280;
+textarea{
+    width:100%;
+    border:1px solid #d1d5db;
+    border-radius:10px;
+    padding:14px;
+    margin-top:12px;
+    margin-bottom:14px;
+    font-size:14px;
+    background:#fafafa;
 }
 
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 999;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background: rgba(0,0,0,0.6);
+/* ======================================================
+   STATS
+====================================================== */
+
+.stats{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:14px;
+    margin-bottom:18px;
 }
 
-.modal-content {
-    background: white;
-    margin: 4% auto;
-    padding: 20px;
-    width: 85%;
-    border-radius: 10px;
-    max-height: 85vh;
-    overflow-y: auto;
+.stat-box{
+    background:white;
+    border-radius:12px;
+    padding:18px;
+    text-align:center;
+    border:1px solid #e5e7eb;
+    box-shadow:0 2px 8px rgba(0,0,0,0.04);
 }
 
-.close {
-    float: right;
-    font-size: 28px;
-    cursor: pointer;
+.stat-title{
+    font-size:14px;
+    color:#6b7280;
+    margin-bottom:8px;
 }
 
-pre {
-    background: #f3f4f6;
-    padding: 12px;
-    border-radius: 6px;
-    overflow-x: auto;
+.stat-value{
+    font-size:26px;
+    font-weight:bold;
 }
 
-.diff-match {
-    color: green;
-    margin-bottom: 6px;
+.total{
+    color:#2563eb;
 }
 
-.diff-mismatch {
-    color: red;
-    margin-bottom: 10px;
+.match{
+    color:#16a34a;
 }
 
-.group-yes {
-    color: green;
-    font-weight: bold;
+.mismatch{
+    color:#dc2626;
 }
 
-.group-no {
-    color: red;
-    font-weight: bold;
+.normal{
+    color:#6b7280;
 }
 
-.shareBtn {
-    background: #111827;
+/* ======================================================
+   FILTER BAR
+====================================================== */
+
+.filter-bar{
+    display:flex;
+    gap:10px;
+    margin-bottom:16px;
+    flex-wrap:wrap;
 }
 
-.controls {
-    margin-bottom: 15px;
+/* ======================================================
+   TABLE
+====================================================== */
+
+.table-wrapper{
+    background:white;
+    border-radius:14px;
+    overflow:auto;
+    border:1px solid #e5e7eb;
+    box-shadow:0 2px 8px rgba(0,0,0,0.04);
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+th{
+    background:#f9fafb;
+    padding:14px;
+    text-align:left;
+    border-bottom:1px solid #e5e7eb;
+    position:sticky;
+    top:0;
+    z-index:10;
+}
+
+td{
+    padding:14px;
+    border-bottom:1px solid #f1f5f9;
+    font-size:14px;
+}
+
+tr:hover{
+    background:#f8fbff;
+}
+
+.row-match{
+    background:#ecfdf5;
+}
+
+.row-mismatch{
+    background:#fef2f2;
+}
+
+/* ======================================================
+   GROUP COLORS
+====================================================== */
+
+.group-yes{
+    color:green;
+    font-weight:bold;
+}
+
+.group-no{
+    color:red;
+    font-weight:bold;
+}
+
+/* ======================================================
+   MODAL
+====================================================== */
+
+.modal{
+    display:none;
+    position:fixed;
+    left:0;
+    top:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.45);
+    z-index:999;
+}
+
+.modal-content{
+    background:white;
+    width:85%;
+    margin:4% auto;
+    border-radius:14px;
+    padding:24px;
+    max-height:88vh;
+    overflow:auto;
+}
+
+.close{
+    float:right;
+    font-size:28px;
+    cursor:pointer;
+}
+
+pre{
+    background:#f4f6f9;
+    padding:16px;
+    border-radius:10px;
+    overflow:auto;
+}
+
+.diff-match{
+    color:green;
+    margin-bottom:10px;
+}
+
+.diff-mismatch{
+    color:red;
+    margin-bottom:10px;
+}
+
+/* ======================================================
+   RESPONSIVE
+====================================================== */
+
+@media(max-width:768px){
+
+    .stats{
+        grid-template-columns:repeat(2,1fr);
+    }
+
+    .search-box{
+        width:100%;
+    }
+
+    .top-controls{
+        flex-direction:column;
+        align-items:flex-start;
+    }
 }
 
 </style>
@@ -305,33 +499,123 @@ pre {
 
 <body>
 
-<h2>📊 UBA Validator Dashboard</h2>
+<!-- =====================================================
+     HEADER
+===================================================== -->
 
-<!-- TABS -->
+<div class="header">
 
-<button class="tab-btn active-tab"
+<div class="title">
+📊 UBA Validator Dashboard
+</div>
+
+</div>
+
+<!-- =====================================================
+     TOP CONTROLS
+===================================================== -->
+
+<div class="card">
+
+<div class="top-controls">
+
+<div class="left-controls">
+
+<button
+class="tab-btn active-tab"
 onclick="switchTab(event,'ios')">
 📱 iOS
 </button>
 
-<button class="tab-btn"
+<button
+class="tab-btn"
 onclick="switchTab(event,'android')">
 🤖 Android
 </button>
 
-<button class="tab-btn"
+<button
+class="tab-btn"
 onclick="switchTab(event,'msite')">
 🌐 Msite
 </button>
 
-<button class="tab-btn"
+<button
+class="tab-btn"
 onclick="switchTab(event,'grouped')">
 🧩 Grouped
 </button>
 
-<hr/>
+</div>
 
-<h3>Expected JSON</h3>
+<div class="right-controls">
+
+<input
+class="search-box"
+id="searchInput"
+placeholder="Search event, page, action..."
+/>
+
+<button
+class="success-btn"
+onclick="exportEvents()">
+📥 Export
+</button>
+
+<button
+class="warning-btn"
+onclick="showMissingEvents()">
+⚠ Missing
+</button>
+
+<button
+class="danger-btn"
+onclick="clearAll()">
+🗑 Clear
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+<!-- =====================================================
+     STATS
+===================================================== -->
+
+<div class="stats">
+
+<div class="stat-box">
+<div class="stat-title">Total</div>
+<div id="totalCount" class="stat-value total">0</div>
+</div>
+
+<div class="stat-box">
+<div class="stat-title">Matched</div>
+<div id="matchCount" class="stat-value match">0</div>
+</div>
+
+<div class="stat-box">
+<div class="stat-title">Mismatch</div>
+<div id="mismatchCount" class="stat-value mismatch">0</div>
+</div>
+
+<div class="stat-box">
+<div class="stat-title">Normal</div>
+<div id="normalCount" class="stat-value normal">0</div>
+</div>
+
+</div>
+
+<!-- =====================================================
+     EXPECTED JSON
+===================================================== -->
+
+<div class="card">
+
+<h3 style="margin-bottom:10px;">
+Expected JSON
+</h3>
 
 <textarea
 id="expectedInput"
@@ -339,76 +623,55 @@ rows="6"
 placeholder='[{"eventName":"click","pageName":"home"}]'>
 </textarea>
 
-<button onclick="updateExpected()">
-Update Expected
+<button
+class="primary-btn"
+onclick="updateExpected()">
+Update Expected JSON
 </button>
 
-<button onclick="clearAll()">
-🗑️ Clear All
-</button>
-
-<button onclick="showMissingEvents()">
-⚠ Missing Events
-</button>
-
-<button onclick="exportEvents()">
-📥 Export JSON
-</button>
-
-<div class="stats">
-
-<div class="stat-box total-box">
-<div>Total</div>
-<div id="totalCount">0</div>
 </div>
 
-<div class="stat-box match-box">
-<div>Matched</div>
-<div id="matchCount">0</div>
-</div>
+<!-- =====================================================
+     FILTERS
+===================================================== -->
 
-<div class="stat-box mismatch-box">
-<div>Mismatch</div>
-<div id="mismatchCount">0</div>
-</div>
+<div class="filter-bar">
 
-<div class="stat-box normal-box">
-<div>Normal</div>
-<div id="normalCount">0</div>
-</div>
-
-</div>
-
-<div class="controls">
-
-<input
-id="searchInput"
-placeholder="Search by event / page / action..."
-/>
-
-</div>
-
-<button class="filter-btn active"
+<button
+id="allBtn"
+class="filter-btn active"
 onclick="setFilter(event,'all')">
-All
+All (0)
 </button>
 
-<button class="filter-btn"
+<button
+id="matchBtn"
+class="filter-btn"
 onclick="setFilter(event,'match')">
-Matched
+Matched (0)
 </button>
 
-<button class="filter-btn"
+<button
+id="mismatchBtn"
+class="filter-btn"
 onclick="setFilter(event,'mismatch')">
-Mismatch
+Mismatch (0)
 </button>
 
-<button class="filter-btn"
+<button
+id="normalBtn"
+class="filter-btn"
 onclick="setFilter(event,'normal')">
-Normal
+Normal (0)
 </button>
 
-<br/><br/>
+</div>
+
+<!-- =====================================================
+     TABLE
+===================================================== -->
+
+<div class="table-wrapper">
 
 <table>
 
@@ -434,22 +697,31 @@ Normal
 
 </table>
 
-<!-- EVENT MODAL -->
+</div>
+
+<!-- =====================================================
+     EVENT MODAL
+===================================================== -->
 
 <div id="modal" class="modal">
 
 <div class="modal-content">
 
-<span class="close"
+<span
+class="close"
 onclick="closeModal()">
 &times;
 </span>
 
-<h3>📦 Event JSON</h3>
+<h2 style="margin-bottom:16px;">
+📦 Event JSON
+</h2>
 
 <pre id="jsonView"></pre>
 
-<h3>🔍 Differences</h3>
+<h2 style="margin-top:24px;margin-bottom:12px;">
+🔍 Differences
+</h2>
 
 <div id="diffView"></div>
 
@@ -457,26 +729,29 @@ onclick="closeModal()">
 
 </div>
 
-<!-- MISSING MODAL -->
+<!-- =====================================================
+     MISSING MODAL
+===================================================== -->
 
 <div id="missingModal" class="modal">
 
 <div class="modal-content">
 
-<span class="close"
+<span
+class="close"
 onclick="closeMissingModal()">
 &times;
 </span>
 
-<h3>⚠ Missing Expected Events</h3>
+<h2 style="margin-bottom:20px;">
+⚠ Missing Expected Events
+</h2>
 
 <div id="missingList"></div>
 
 </div>
 
 </div>
-
-<script src="/socket.io/socket.io.js"></script>
 
 <script>
 
@@ -490,65 +765,118 @@ let currentFilter = "all";
 
 let currentTab = "ios";
 
-/* ---------------- TAB ---------------- */
+/* =====================================================
+   TAB
+===================================================== */
 
-function switchTab(e, tab) {
+function switchTab(e, tab){
 
     currentTab = tab;
 
-    document.querySelectorAll(".tab-btn")
-    .forEach(btn =>
-        btn.classList.remove("active-tab")
-    );
+    document
+    .querySelectorAll(".tab-btn")
+    .forEach(btn => {
 
-    e.target.classList.add("active-tab");
+        btn.classList.remove(
+            "active-tab"
+        );
+    });
+
+    e.target.classList.add(
+        "active-tab"
+    );
 
     renderTable();
 }
 
-/* ---------------- EXPECTED ---------------- */
+/* =====================================================
+   EXPECTED JSON
+===================================================== */
 
-function updateExpected() {
+function updateExpected(){
 
-    try {
+    try{
 
         expectedEvents = JSON.parse(
-            document.getElementById("expectedInput").value || "[]"
+            document.getElementById(
+                "expectedInput"
+            ).value || "[]"
         );
 
         renderTable();
 
-        alert("✅ Expected JSON Updated");
+        alert(
+            "✅ Expected JSON Updated"
+        );
 
-    } catch {
+    }catch{
 
         alert("❌ Invalid JSON");
     }
 }
 
-/* ---------------- PAGE MATCH ---------------- */
+/* =====================================================
+   FILTER
+===================================================== */
 
-function isPageNameMatch(expectedPage, actualPage) {
+function setFilter(e, type){
 
-    if (
+    currentFilter = type;
+
+    document
+    .querySelectorAll(".filter-btn")
+    .forEach(btn => {
+
+        btn.classList.remove(
+            "active"
+        );
+    });
+
+    e.target.classList.add(
+        "active"
+    );
+
+    renderTable();
+}
+
+/* =====================================================
+   PAGE MATCH
+===================================================== */
+
+function isPageNameMatch(
+    expectedPage,
+    actualPage
+){
+
+    if(
         expectedPage === null ||
         expectedPage === undefined ||
         expectedPage === ""
-    ) {
+    ){
         return true;
     }
 
-    return String(expectedPage) === String(actualPage);
+    return (
+        String(expectedPage) ===
+        String(actualPage)
+    );
 }
 
-/* ---------------- FIND EXPECTED ---------------- */
+/* =====================================================
+   EXPECTED MATCHES
+===================================================== */
 
-function getMatchingExpectedEvents(event) {
+function getMatchingExpectedEvents(
+    event
+){
 
-    return expectedEvents.filter(expected => {
+    return expectedEvents.filter(
+        expected => {
 
         return (
-            expected.eventName === event.eventName &&
+            expected.eventName ===
+            event.eventName &&
+
             isPageNameMatch(
                 expected.pageName,
                 event.pageName
@@ -557,26 +885,32 @@ function getMatchingExpectedEvents(event) {
     });
 }
 
-/* ---------------- STATUS ---------------- */
+/* =====================================================
+   STATUS
+===================================================== */
 
-function getRowStatus(event) {
+function getRowStatus(event){
 
     const matches =
-        getMatchingExpectedEvents(event);
+        getMatchingExpectedEvents(
+            event
+        );
 
-    if (!matches.length) {
+    if(!matches.length){
         return "normal";
     }
 
-    const isMatch = matches.some(match => {
+    const isMatch =
+        matches.some(match => {
 
-        return Object.keys(match).every(key => {
+        return Object.keys(match)
+        .every(key => {
 
-            if (
+            if(
                 match[key] === null ||
                 match[key] === undefined ||
                 match[key] === ""
-            ) {
+            ){
                 return true;
             }
 
@@ -587,63 +921,59 @@ function getRowStatus(event) {
         });
     });
 
-    return isMatch ? "match" : "mismatch";
+    return isMatch
+        ? "match"
+        : "mismatch";
 }
 
-/* ---------------- FILTER ---------------- */
+/* =====================================================
+   PLATFORM
+===================================================== */
 
-function setFilter(e, type) {
+function getPlatform(event){
 
-    currentFilter = type;
-
-    document.querySelectorAll(".filter-btn")
-    .forEach(btn =>
-        btn.classList.remove("active")
-    );
-
-    e.target.classList.add("active");
-
-    renderTable();
-}
-
-/* ---------------- PLATFORM ---------------- */
-
-function getPlatform(event) {
-
-    if (String(event.appId) === "22") {
+    if(
+        String(event.appId) === "22"
+    ){
         return "iOS";
     }
 
-    if (String(event.appId) === "21") {
+    if(
+        String(event.appId) === "21"
+    ){
         return "Android";
     }
 
-    if (String(event.appId) === "205") {
+    if(
+        String(event.appId) === "205"
+    ){
         return "Msite";
     }
 
     return event.deviceType || "-";
 }
 
-/* ---------------- FILTER TAB ---------------- */
+/* =====================================================
+   TAB EVENTS
+===================================================== */
 
-function getCurrentTabEvents() {
+function getCurrentTabEvents(){
 
-    if (currentTab === "ios") {
+    if(currentTab === "ios"){
 
         return allEvents.filter(
             e => String(e.appId) === "22"
         );
     }
 
-    if (currentTab === "android") {
+    if(currentTab === "android"){
 
         return allEvents.filter(
             e => String(e.appId) === "21"
         );
     }
 
-    if (currentTab === "msite") {
+    if(currentTab === "msite"){
 
         return allEvents.filter(
             e => String(e.appId) === "205"
@@ -653,9 +983,11 @@ function getCurrentTabEvents() {
     return allEvents;
 }
 
-/* ---------------- STATS ---------------- */
+/* =====================================================
+   STATS
+===================================================== */
 
-function updateStats(filtered) {
+function updateStats(filtered){
 
     let match = 0;
     let mismatch = 0;
@@ -663,61 +995,105 @@ function updateStats(filtered) {
 
     filtered.forEach(event => {
 
-        const status = getRowStatus(event);
+        const status =
+            getRowStatus(event);
 
-        if (status === "match") match++;
-        else if (status === "mismatch") mismatch++;
-        else normal++;
+        if(status === "match"){
+            match++;
+        }
+        else if(
+            status === "mismatch"
+        ){
+            mismatch++;
+        }
+        else{
+            normal++;
+        }
     });
 
-    document.getElementById("totalCount")
-    .innerText = filtered.length;
+    const total = filtered.length;
 
-    document.getElementById("matchCount")
-    .innerText = match;
+    document.getElementById(
+        "totalCount"
+    ).innerText = total;
 
-    document.getElementById("mismatchCount")
-    .innerText = mismatch;
+    document.getElementById(
+        "matchCount"
+    ).innerText = match;
 
-    document.getElementById("normalCount")
-    .innerText = normal;
+    document.getElementById(
+        "mismatchCount"
+    ).innerText = mismatch;
+
+    document.getElementById(
+        "normalCount"
+    ).innerText = normal;
+
+    document.getElementById(
+        "allBtn"
+    ).innerText =
+        "All (" + total + ")";
+
+    document.getElementById(
+        "matchBtn"
+    ).innerText =
+        "Matched (" + match + ")";
+
+    document.getElementById(
+        "mismatchBtn"
+    ).innerText =
+        "Mismatch (" + mismatch + ")";
+
+    document.getElementById(
+        "normalBtn"
+    ).innerText =
+        "Normal (" + normal + ")";
 }
 
-/* ---------------- GROUPED TABLE ---------------- */
+/* =====================================================
+   GROUPED TABLE
+===================================================== */
 
-function renderGroupedTable(tableBody) {
+function renderGroupedTable(
+    tableBody
+){
 
     const grouped = {};
 
     let filtered = [...allEvents];
 
-    const search = document
-        .getElementById("searchInput")
+    const search =
+        document
+        .getElementById(
+            "searchInput"
+        )
         .value
         .toLowerCase()
         .trim();
 
-    if (search) {
+    if(search){
 
-        filtered = filtered.filter(event => {
+        filtered = filtered.filter(
+            event => {
 
-            const text =
-                (
-                    (event.eventName || "") + " " +
-                    (event.pageName || "") + " " +
-                    (event.actionLabel || "") + " " +
-                    (event.actionSrc || "") + " " +
-                    (event.actionType || "")
-                )
-                .toLowerCase();
+            const text = (
+                (event.eventName || "") + " " +
+                (event.pageName || "") + " " +
+                (event.actionLabel || "") + " " +
+                (event.actionSrc || "") + " " +
+                (event.actionType || "")
+            ).toLowerCase();
 
-            return text.includes(search);
+            return text.includes(
+                search
+            );
         });
     }
 
-    if (currentFilter !== "all") {
+    if(currentFilter !== "all"){
 
-        filtered = filtered.filter(event => {
+        filtered = filtered.filter(
+            event => {
 
             return (
                 getRowStatus(event) ===
@@ -729,10 +1105,11 @@ function renderGroupedTable(tableBody) {
     filtered.forEach(event => {
 
         const key =
-            (event.eventName || "") + "_" +
+            (event.eventName || "") +
+            "_" +
             (event.pageName || "");
 
-        if (!grouped[key]) {
+        if(!grouped[key]){
 
             grouped[key] = {
 
@@ -754,27 +1131,33 @@ function renderGroupedTable(tableBody) {
                 timestamp:
                     event.serverTimestamp || "-",
 
-                ios: false,
+                ios:false,
+                android:false,
+                msite:false,
 
-                android: false,
-
-                msite: false,
-
-                rawEvents: []
+                rawEvents:[]
             };
         }
 
-        grouped[key].rawEvents.push(event);
+        grouped[key].rawEvents.push(
+            event
+        );
 
-        if (String(event.appId) === "22") {
+        if(
+            String(event.appId) === "22"
+        ){
             grouped[key].ios = true;
         }
 
-        if (String(event.appId) === "21") {
+        if(
+            String(event.appId) === "21"
+        ){
             grouped[key].android = true;
         }
 
-        if (String(event.appId) === "205") {
+        if(
+            String(event.appId) === "205"
+        ){
             grouped[key].msite = true;
         }
     });
@@ -782,15 +1165,15 @@ function renderGroupedTable(tableBody) {
     const groupedItems =
         Object.values(grouped);
 
-    if (!groupedItems.length) {
+    if(!groupedItems.length){
 
         tableBody.innerHTML = \`
 
         <tr>
-            <td colspan="9"
-            style="text-align:center;padding:20px;">
-                No Data Found
-            </td>
+        <td colspan="9"
+        style="text-align:center;padding:20px;">
+        No Data Found
+        </td>
         </tr>
 
         \`;
@@ -800,10 +1183,13 @@ function renderGroupedTable(tableBody) {
         return;
     }
 
-    groupedItems.forEach((item, index) => {
+    groupedItems.forEach(
+        (item, index) => {
 
         const row =
-            document.createElement("tr");
+            document.createElement(
+                "tr"
+            );
 
         row.innerHTML = \`
 
@@ -845,95 +1231,132 @@ Msite:
 <td>\${item.timestamp}</td>
 
 <td>
-<button class="shareBtn">
+<button class="share-btn">
 Share
 </button>
 </td>
 
 \`;
 
-        row.addEventListener("click", (e) => {
+        row.addEventListener(
+            "click",
+            (e) => {
 
-            if (
-                !e.target.classList.contains("shareBtn")
-            ) {
+            if(
+                !e.target.classList.contains(
+                    "share-btn"
+                )
+            ){
 
-                openModal(item.rawEvents[0]);
+                openModal(
+                    item.rawEvents[0]
+                );
             }
         });
 
-        row.querySelector(".shareBtn")
-        .onclick = (e) => {
+        row.querySelector(
+            ".share-btn"
+        ).onclick = (e) => {
 
             e.stopPropagation();
 
-            shareCurl(item.rawEvents[0]);
+            shareCurl(
+                item.rawEvents[0]
+            );
         };
 
-        tableBody.appendChild(row);
+        tableBody.appendChild(
+            row
+        );
     });
 
     updateStats(filtered);
 }
 
-/* ---------------- TABLE ---------------- */
+/* =====================================================
+   TABLE
+===================================================== */
 
-function renderTable() {
+function renderTable(){
 
     const tableBody =
-        document.getElementById("tableBody");
+        document.getElementById(
+            "tableBody"
+        );
 
     tableBody.innerHTML = "";
 
-    if (currentTab === "grouped") {
+    if(
+        currentTab === "grouped"
+    ){
 
-        renderGroupedTable(tableBody);
+        renderGroupedTable(
+            tableBody
+        );
 
         return;
     }
 
-    let filtered = getCurrentTabEvents();
+    let filtered =
+        getCurrentTabEvents();
 
-    const search = document
-        .getElementById("searchInput")
+    const search =
+        document
+        .getElementById(
+            "searchInput"
+        )
         .value
         .toLowerCase();
 
-    filtered = filtered.filter(e => {
+    filtered = filtered.filter(
+        e => {
 
-        const text =
-            (
-                (e.eventName || "") + " " +
-                (e.pageName || "") + " " +
-                (e.actionLabel || "") + " " +
-                (e.actionSrc || "") + " " +
-                (e.actionType || "")
-            ).toLowerCase();
+        const text = (
+            (e.eventName || "") + " " +
+            (e.pageName || "") + " " +
+            (e.actionLabel || "") + " " +
+            (e.actionSrc || "") + " " +
+            (e.actionType || "")
+        ).toLowerCase();
 
-        return text.includes(search);
+        return text.includes(
+            search
+        );
     });
 
-    if (currentFilter !== "all") {
+    if(currentFilter !== "all"){
 
         filtered = filtered.filter(
-            e => getRowStatus(e) === currentFilter
-        );
+            e => {
+
+            return (
+                getRowStatus(e) ===
+                currentFilter
+            );
+        });
     }
 
-    filtered.forEach((event, i) => {
+    filtered.forEach(
+        (event, i) => {
 
         const row =
-            document.createElement("tr");
+            document.createElement(
+                "tr"
+            );
 
         const status =
             getRowStatus(event);
 
-        if (status === "match") {
-            row.classList.add("match");
+        if(status === "match"){
+            row.classList.add(
+                "row-match"
+            );
         }
 
-        if (status === "mismatch") {
-            row.classList.add("mismatch");
+        if(status === "mismatch"){
+            row.classList.add(
+                "row-mismatch"
+            );
         }
 
         row.innerHTML = \`
@@ -955,68 +1378,87 @@ function renderTable() {
 <td>\${event.serverTimestamp || "-"}</td>
 
 <td>
-<button class="shareBtn">
+<button class="share-btn">
 Share
 </button>
 </td>
 
 \`;
 
-        row.addEventListener("click", (e) => {
+        row.addEventListener(
+            "click",
+            (e) => {
 
-            if (
-                !e.target.classList.contains("shareBtn")
-            ) {
+            if(
+                !e.target.classList.contains(
+                    "share-btn"
+                )
+            ){
                 openModal(event);
             }
         });
 
-        row.querySelector(".shareBtn")
-        .onclick = (e) => {
+        row.querySelector(
+            ".share-btn"
+        ).onclick = (e) => {
 
             e.stopPropagation();
 
             shareCurl(event);
         };
 
-        tableBody.appendChild(row);
+        tableBody.appendChild(
+            row
+        );
     });
 
     updateStats(filtered);
 }
 
-/* ---------------- MODAL ---------------- */
+/* =====================================================
+   MODAL
+===================================================== */
 
-function openModal(event) {
+function openModal(event){
 
-    document.getElementById("modal")
-    .style.display = "block";
+    document.getElementById(
+        "modal"
+    ).style.display = "block";
 
-    document.getElementById("jsonView")
-    .textContent =
-        JSON.stringify(event, null, 2);
+    document.getElementById(
+        "jsonView"
+    ).textContent =
+        JSON.stringify(
+            event,
+            null,
+            2
+        );
 
     const matches =
-        getMatchingExpectedEvents(event);
+        getMatchingExpectedEvents(
+            event
+        );
 
     let html = "";
 
-    if (!matches.length) {
+    if(!matches.length){
 
         html =
             "<p>No expected data found</p>";
 
-    } else {
+    }else{
 
-        const expected = matches[0];
+        const expected =
+            matches[0];
 
-        Object.keys(expected).forEach(key => {
+        Object.keys(expected)
+        .forEach(key => {
 
-            if (
+            if(
                 expected[key] === null ||
                 expected[key] === undefined ||
                 expected[key] === ""
-            ) {
+            ){
 
                 html += \`
                 <div class="diff-match">
@@ -1027,10 +1469,10 @@ function openModal(event) {
                 return;
             }
 
-            if (
+            if(
                 String(expected[key]) ===
                 String(event[key])
-            ) {
+            ){
 
                 html += \`
                 <div class="diff-match">
@@ -1038,7 +1480,7 @@ function openModal(event) {
                 </div>
                 \`;
 
-            } else {
+            }else{
 
                 html += \`
                 <div class="diff-mismatch">
@@ -1051,24 +1493,30 @@ function openModal(event) {
         });
     }
 
-    document.getElementById("diffView")
-    .innerHTML = html;
+    document.getElementById(
+        "diffView"
+    ).innerHTML = html;
 }
 
-function closeModal() {
+function closeModal(){
 
-    document.getElementById("modal")
-    .style.display = "none";
+    document.getElementById(
+        "modal"
+    ).style.display = "none";
 }
 
-/* ---------------- MISSING EVENTS ---------------- */
+/* =====================================================
+   MISSING EVENTS
+===================================================== */
 
-function showMissingEvents() {
+function showMissingEvents(){
 
     const missing =
-        expectedEvents.filter(expected => {
+        expectedEvents.filter(
+            expected => {
 
-        return !allEvents.some(event => {
+        return !allEvents.some(
+            event => {
 
             return (
                 expected.eventName ===
@@ -1084,17 +1532,17 @@ function showMissingEvents() {
 
     let html = "";
 
-    if (!missing.length) {
+    if(!missing.length){
 
         html =
             "<p>✅ All expected events present</p>";
 
-    } else {
+    }else{
 
         missing.forEach(item => {
 
             html += \`
-            <div style="margin-bottom:12px;color:red;">
+            <div style="margin-bottom:14px;color:red;">
             ❌ Event:
             <b>\${item.eventName}</b>
 
@@ -1107,98 +1555,142 @@ function showMissingEvents() {
         });
     }
 
-    document.getElementById("missingList")
-    .innerHTML = html;
+    document.getElementById(
+        "missingList"
+    ).innerHTML = html;
 
-    document.getElementById("missingModal")
-    .style.display = "block";
+    document.getElementById(
+        "missingModal"
+    ).style.display = "block";
 }
 
-function closeMissingModal() {
+function closeMissingModal(){
 
-    document.getElementById("missingModal")
-    .style.display = "none";
+    document.getElementById(
+        "missingModal"
+    ).style.display = "none";
 }
 
-/* ---------------- SHARE ---------------- */
+/* =====================================================
+   SHARE
+===================================================== */
 
-function shareCurl(event) {
+function shareCurl(event){
 
     const curl =
 \`curl -X POST http://localhost:3000/uba \\\\\\
 -H "Content-Type: application/json" \\\\\\
 -d '\${JSON.stringify(event)}'\`;
 
-    navigator.clipboard.writeText(curl);
+    navigator.clipboard.writeText(
+        curl
+    );
 
     alert("✅ cURL copied");
 }
 
-/* ---------------- EXPORT ---------------- */
+/* =====================================================
+   EXPORT
+===================================================== */
 
-function exportEvents() {
+function exportEvents(){
 
     const blob = new Blob(
-        [JSON.stringify(allEvents, null, 2)],
-        { type: "application/json" }
+        [
+            JSON.stringify(
+                allEvents,
+                null,
+                2
+            )
+        ],
+        {
+            type:"application/json"
+        }
     );
 
     const url =
-        URL.createObjectURL(blob);
+        URL.createObjectURL(
+            blob
+        );
 
     const a =
-        document.createElement("a");
+        document.createElement(
+            "a"
+        );
 
     a.href = url;
 
-    a.download = "uba-events.json";
+    a.download =
+        "uba-events.json";
 
     a.click();
 
     URL.revokeObjectURL(url);
 }
 
-/* ---------------- CLEAR ---------------- */
+/* =====================================================
+   CLEAR
+===================================================== */
 
-function clearAll() {
+function clearAll(){
 
-    if (!confirm("Clear all data?")) {
+    if(
+        !confirm(
+            "Clear all data?"
+        )
+    ){
         return;
     }
 
     fetch("/clear", {
-        method: "DELETE"
+        method:"DELETE"
     });
 }
 
-/* ---------------- SOCKET ---------------- */
+/* =====================================================
+   SOCKET EVENTS
+===================================================== */
 
-socket.on("initialData", data => {
+socket.on(
+    "initialData",
+    data => {
 
-    allEvents = data.slice().reverse();
+    allEvents =
+        data.slice().reverse();
 
     renderTable();
 });
 
-socket.on("newEvent", event => {
+socket.on(
+    "newEvent",
+    event => {
 
     allEvents.unshift(event);
 
     renderTable();
 });
 
-socket.on("clearEvents", () => {
+socket.on(
+    "clearEvents",
+    () => {
 
     allEvents = [];
 
     renderTable();
 });
 
-/* ---------------- SEARCH ---------------- */
+/* =====================================================
+   SEARCH
+===================================================== */
 
 document
-.getElementById("searchInput")
-.addEventListener("input", renderTable);
+.getElementById(
+    "searchInput"
+)
+.addEventListener(
+    "input",
+    renderTable
+);
 
 </script>
 
@@ -1209,9 +1701,14 @@ document
 `);
 });
 
-/* ---------------- START ---------------- */
+/* =========================================================
+   START SERVER
+========================================================= */
 
-server.listen(port, "0.0.0.0", () => {
+server.listen(
+    port,
+    "0.0.0.0",
+    () => {
 
     console.log("🚀 Server running on:");
     console.log("http://localhost:3000");
