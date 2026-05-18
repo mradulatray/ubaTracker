@@ -399,9 +399,6 @@ td{
     font-size:14px;
 }
 
-tr:hover{
-    background:#f8fbff;
-}
 
 .row-match{
     background:#ecfdf5;
@@ -987,6 +984,120 @@ function getCurrentTabEvents(){
    STATS
 ===================================================== */
 
+
+/* =====================================================
+   STATS
+===================================================== */
+
+function updateStats() {
+
+    // ALWAYS use all events
+    // so counts remain same across tabs
+    let sourceEvents = [...allEvents];
+
+    /* =====================================================
+       SEARCH FILTER
+    ===================================================== */
+
+    const search =
+        document
+        .getElementById("searchInput")
+        .value
+        .toLowerCase()
+        .trim();
+
+    if (search) {
+
+        sourceEvents = sourceEvents.filter(event => {
+
+            const text = (
+                (event.eventName || "") + " " +
+                (event.pageName || "") + " " +
+                (event.actionLabel || "") + " " +
+                (event.actionSrc || "") + " " +
+                (event.actionType || "")
+            ).toLowerCase();
+
+            return text.includes(search);
+        });
+    }
+
+    /* =====================================================
+       COUNTS
+    ===================================================== */
+
+    let match = 0;
+    let mismatch = 0;
+    let normal = 0;
+
+    sourceEvents.forEach(event => {
+
+        const status = getRowStatus(event);
+
+        if (status === "match") {
+
+            match++;
+
+        } else if (status === "mismatch") {
+
+            mismatch++;
+
+        } else {
+
+            normal++;
+        }
+    });
+
+    const total = sourceEvents.length;
+
+    /* =====================================================
+       TOP STATS
+    ===================================================== */
+
+    document.getElementById(
+        "totalCount"
+    ).innerText = total;
+
+    document.getElementById(
+        "matchCount"
+    ).innerText = match;
+
+    document.getElementById(
+        "mismatchCount"
+    ).innerText = mismatch;
+
+    document.getElementById(
+        "normalCount"
+    ).innerText = normal;
+
+    /* =====================================================
+       FILTER BUTTON COUNTS
+    ===================================================== */
+
+    document.getElementById(
+        "allBtn"
+    ).innerText =
+        "All (" + total + ")";
+
+    document.getElementById(
+        "matchBtn"
+    ).innerText =
+        "Matched (" + match + ")";
+
+    document.getElementById(
+        "mismatchBtn"
+    ).innerText =
+        "Mismatch (" + mismatch + ")";
+
+    document.getElementById(
+        "normalBtn"
+    ).innerText =
+        "Normal (" + normal + ")";
+}
+
+
+/*
+
 function updateStats(filtered){
 
     let match = 0;
@@ -1049,6 +1160,7 @@ function updateStats(filtered){
     ).innerText =
         "Normal (" + normal + ")";
 }
+        */
 
 /* =====================================================
    GROUPED TABLE
@@ -1270,7 +1382,7 @@ Share
         );
     });
 
-    updateStats(filtered);
+    updateStats();
 }
 
 /* =====================================================
@@ -1385,7 +1497,7 @@ Share
 
 \`;
 
-        row.addEventListener(
+     row.addEventListener(
             "click",
             (e) => {
 
@@ -1412,7 +1524,7 @@ Share
         );
     });
 
-    updateStats(filtered);
+    updateStats();
 }
 
 /* =====================================================
