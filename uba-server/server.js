@@ -626,6 +626,13 @@ onclick="updateExpected()">
 Update Expected JSON
 </button>
 
+<button
+class="danger-btn"
+onclick="clearExpectedJSON()"
+style="margin-left:10px;">
+🗑 Clear Expected JSON
+</button>
+
 </div>
 
 <!-- =====================================================
@@ -787,6 +794,33 @@ function switchTab(e, tab){
 }
 
 /* =====================================================
+   CLEAR EXPECTED JSON
+===================================================== */
+
+function clearExpectedJSON(){
+
+    // CLEAR MEMORY
+    expectedEvents = [];
+
+    // CLEAR TEXTAREA
+    document.getElementById(
+        "expectedInput"
+    ).value = "";
+
+    // CLEAR LOCAL STORAGE
+    localStorage.removeItem(
+        "expectedEvents"
+    );
+
+    // REFRESH TABLE
+    renderTable();
+
+    showToast(
+        "✅ Expected JSON Cleared"
+    );
+}
+
+/* =====================================================
    EXPECTED JSON
 ===================================================== */
 
@@ -800,15 +834,100 @@ function updateExpected(){
             ).value || "[]"
         );
 
+         // SAVE TO LOCAL STORAGE
+        localStorage.setItem(
+            "expectedEvents",
+            JSON.stringify(expectedEvents)
+        );
+
         renderTable();
 
-        alert(
+        showToast(
             "✅ Expected JSON Updated"
         );
 
     }catch{
 
         alert("❌ Invalid JSON");
+    }
+   }
+
+/* =====================================================
+   TOAST POPUP
+===================================================== */
+
+function showToast(message){
+
+    const toast =
+        document.createElement("div");
+
+    toast.innerText = message;
+
+  toast.style.position = "fixed";
+toast.style.top = "20px";
+toast.style.left = "50%";
+toast.style.transform = "translateX(-50%)";
+    toast.style.background = "#111827";
+    toast.style.color = "white";
+    toast.style.padding = "12px 18px";
+    toast.style.borderRadius = "10px";
+    toast.style.fontSize = "14px";
+    toast.style.fontWeight = "600";
+    toast.style.zIndex = "9999";
+    toast.style.boxShadow =
+        "0 4px 12px rgba(0,0,0,0.2)";
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+
+        toast.style.transition =
+            "opacity 0.3s";
+
+        toast.style.opacity = "0";
+
+        setTimeout(() => {
+
+            toast.remove();
+
+        }, 300);
+
+    }, 2000);
+}
+
+/* =====================================================
+   LOAD SAVED EXPECTED JSON
+===================================================== */
+
+function loadExpectedJSON(){
+
+    const saved =
+        localStorage.getItem(
+            "expectedEvents"
+        );
+
+    if(saved){
+
+        try{
+
+            expectedEvents =
+                JSON.parse(saved);
+
+            document.getElementById(
+                "expectedInput"
+            ).value =
+                JSON.stringify(
+                    expectedEvents,
+                    null,
+                    2
+                );
+
+        }catch(e){
+
+            console.log(
+                "Invalid saved expected JSON"
+            );
+        }
     }
 }
 
@@ -1803,6 +1922,9 @@ document
     "input",
     renderTable
 );
+
+// LOAD SAVED DATA
+loadExpectedJSON();
 
 </script>
 
