@@ -1071,7 +1071,7 @@ function getPlatform(event){
     }
 
     if(
-        String(event.appId) === "205"
+        String(event.appId) === "2050"
     ){
         return "Msite";
     }
