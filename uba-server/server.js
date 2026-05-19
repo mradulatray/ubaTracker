@@ -701,7 +701,7 @@ Normal (0)
 <th>Action Type</th>
 <th>Platform</th>
 <th>Timestamp</th>
-<th>Share</th>
+<th>View More</th>
 
 </tr>
 
@@ -1180,26 +1180,8 @@ function updateStats() {
     const total = sourceEvents.length;
 
     /* =====================================================
-       TOP STATS
+       TAB STATS
     ===================================================== */
-/* 
-    document.getElementById(
-        "totalCount"
-    ).innerText = total;
-
-    document.getElementById(
-        "matchCount"
-    ).innerText = match;
-
-    document.getElementById(
-        "mismatchCount"
-    ).innerText = mismatch;
-
-    document.getElementById(
-        "normalCount"
-    ).innerText = normal;
-
-    */
 
     const totalEl =
     document.getElementById("totalCount");
@@ -1502,8 +1484,8 @@ Msite:
 <td>\${item.timestamp}</td>
 
 <td>
-<button class="share-btn">
-Share
+<button class="view-more-btn">
+View More
 </button>
 </td>
 
@@ -1526,15 +1508,13 @@ Share
         });
 
         row.querySelector(
-            ".share-btn"
-        ).onclick = (e) => {
+    ".view-more-btn"
+).onclick = (e) => {
 
-            e.stopPropagation();
+    e.stopPropagation();
 
-            shareCurl(
-                item.rawEvents[0]
-            );
-        };
+    openModal(event);
+};
 
         tableBody.appendChild(
             row
@@ -1649,8 +1629,8 @@ function renderTable(){
 <td>\${event.serverTimestamp || "-"}</td>
 
 <td>
-<button class="share-btn">
-Share
+<button class="view-more-btn">
+View More
 </button>
 </td>
 
@@ -1670,13 +1650,13 @@ Share
         });
 
         row.querySelector(
-            ".share-btn"
-        ).onclick = (e) => {
+    ".view-more-btn"
+).onclick = (e) => {
 
-            e.stopPropagation();
+    e.stopPropagation();
 
-            shareCurl(event);
-        };
+    openModal(event);
+};
 
         tableBody.appendChild(
             row
@@ -1965,6 +1945,18 @@ document
 
 // LOAD SAVED DATA
 loadExpectedJSON();
+
+document.getElementById("modal").addEventListener("click", (e) => {
+    if (e.target.id === "modal") {
+        closeModal();
+    }
+});
+
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+        closeModal();
+    }
+});
 
 </script>
 
