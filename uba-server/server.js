@@ -1182,7 +1182,7 @@ function updateStats() {
     /* =====================================================
        TOP STATS
     ===================================================== */
-
+/* 
     document.getElementById(
         "totalCount"
     ).innerText = total;
@@ -1198,6 +1198,36 @@ function updateStats() {
     document.getElementById(
         "normalCount"
     ).innerText = normal;
+
+    */
+
+    const totalEl =
+    document.getElementById("totalCount");
+
+    const matchEl =
+    document.getElementById("matchCount");
+
+    const mismatchEl =
+    document.getElementById("mismatchCount"); 
+
+    const normalEl =
+    document.getElementById("normalCount");
+
+    if(totalEl){
+    totalEl.innerText = total;
+    }
+
+    if(matchEl){
+    matchEl.innerText = match;
+    }
+
+    if(mismatchEl){
+    mismatchEl.innerText = mismatch;
+    }
+ 
+    if(normalEl){
+    normalEl.innerText = normal;
+    }
 
     /* =====================================================
        FILTER BUTTON COUNTS
