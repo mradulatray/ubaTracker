@@ -1102,7 +1102,7 @@ function getCurrentTabEvents(){
     if(currentTab === "msite"){
 
         return allEvents.filter(
-            e => String(e.appId) === "205"
+            e => String(e.appId) === "2050"
         );
     }
 
@@ -1409,7 +1409,7 @@ function renderGroupedTable(
         }
 
         if(
-            String(event.appId) === "205"
+            String(event.appId) === "2050"
         ){
             grouped[key].msite = true;
         }
