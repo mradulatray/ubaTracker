@@ -21,7 +21,7 @@ function getPlatform(appId) {
 
     if (appId == "22") return "ios";
     if (appId == "21") return "android";
-    if (appId == "205") return "msite";
+    if (appId == "2050") return "msite";
 
     return "unknown";
 }
