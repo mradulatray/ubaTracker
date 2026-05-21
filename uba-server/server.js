@@ -655,7 +655,7 @@ style="margin-left:10px;">
      FILTERS
 ===================================================== -->
 
-<div class="filter-bar">
+<div id="filterBar" class="filter-bar">
 
 <button
 id="allBtn"
@@ -805,6 +805,18 @@ function switchTab(e, tab){
     e.target.classList.add(
         "active-tab"
     );
+
+    const filterBar =
+        document.getElementById(
+            "filterBar"
+        );
+
+    if (filterBar) {
+        filterBar.style.display =
+            tab === "grouped"
+            ? "none"
+            : "flex";
+    }
 
     renderTable();
 }
