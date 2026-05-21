@@ -562,6 +562,12 @@ id="searchInput"
 placeholder="Search event, page, action..."
 />
 
+<input
+class="search-box"
+id="deviceFilterInput"
+placeholder="Filter deviceIds (comma or space separated)"
+/>
+
 <button
 class="success-btn"
 onclick="exportEvents()">
@@ -1079,34 +1085,60 @@ function getPlatform(event){
     return event.deviceType || "-";
 }
 
+function getDeviceFilterIds() {
+    return document
+        .getElementById("deviceFilterInput")
+        .value
+        .toLowerCase()
+        .split(/[\s,;]+/)
+        .map(id => id.trim())
+        .filter(Boolean);
+}
+
+function matchesDeviceFilter(event) {
+    const deviceIds = getDeviceFilterIds();
+
+    if (!deviceIds.length) {
+        return true;
+    }
+
+    const eventDeviceId = String(event.deviceId || event.device_id || event.id || "")
+        .toLowerCase()
+        .trim();
+
+    return deviceIds.includes(eventDeviceId);
+}
+
 /* =====================================================
    TAB EVENTS
 ===================================================== */
 
 function getCurrentTabEvents(){
 
+    let filtered = allEvents.filter(matchesDeviceFilter);
+
     if(currentTab === "ios"){
 
-        return allEvents.filter(
+        return filtered.filter(
             e => String(e.appId) === "22"
         );
     }
 
     if(currentTab === "android"){
 
-        return allEvents.filter(
+        return filtered.filter(
             e => String(e.appId) === "21"
         );
     }
 
     if(currentTab === "msite"){
 
-        return allEvents.filter(
+        return filtered.filter(
             e => String(e.appId) === "2050"
         );
     }
 
-    return allEvents;
+    return filtered;
 }
 
 /* =====================================================
@@ -1122,7 +1154,7 @@ function updateStats() {
 
     // ALWAYS use all events
     // so counts remain same across tabs
-    let sourceEvents = [...allEvents];
+    let sourceEvents = [...allEvents].filter(matchesDeviceFilter);
 
     /* =====================================================
        SEARCH FILTER
@@ -1313,7 +1345,7 @@ function renderGroupedTable(
 
     const grouped = {};
 
-    let filtered = [...allEvents];
+    let filtered = [...allEvents].filter(matchesDeviceFilter);
 
     const search =
         document
@@ -1762,11 +1794,14 @@ function closeModal(){
 
 function showMissingEvents(){
 
+    const filteredEvents =
+        allEvents.filter(matchesDeviceFilter);
+
     const missing =
         expectedEvents.filter(
             expected => {
 
-        return !allEvents.some(
+        return !filteredEvents.some(
             event => {
 
             return (
@@ -1937,6 +1972,15 @@ socket.on(
 document
 .getElementById(
     "searchInput"
+)
+.addEventListener(
+    "input",
+    renderTable
+);
+
+document
+.getElementById(
+    "deviceFilterInput"
 )
 .addEventListener(
     "input",
