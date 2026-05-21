@@ -1332,20 +1332,20 @@ function renderGroupedTable(
 '<td>' + item.timestamp + '</td>' +
 '<td><button class="view-more-btn">View More</button></td>';
 
-        row.addEventListener(
-            "click",
-            (e) => {
+        // row.addEventListener(
+        //     "click",
+        //     (e) => {
 
-            if (
-                e.target.classList.contains("view-more-btn")
-            ) {
-                return;
-            }
+        //     if (
+        //         e.target.classList.contains("view-more-btn")
+        //     ) {
+        //         return;
+        //     }
 
-            openModal(
-                item.rawEvents[0]
-            );
-        });
+        //     openModal(
+        //         item.rawEvents[0]
+        //     );
+        // });
 
         row.querySelector(
             ".view-more-btn"
@@ -1496,17 +1496,22 @@ function renderTable(){
         });
 
         row.addEventListener(
-            "click",
-            (e) => {
+    "click",
+    (e) => {
 
-            if (
-                e.target.classList.contains("view-more-btn")
-            ) {
-                return;
-            }
+    if (
+        e.target.classList.contains("view-more-btn") ||
+        e.target.classList.contains("row-checkbox")
+    ) {
+        return;
+    }
 
-            openModal(event);
-        });
+    checkbox.checked = !checkbox.checked;
+
+    toggleRowSelection(
+        checkbox
+    );
+});
 
         row.querySelector(
             ".view-more-btn"
