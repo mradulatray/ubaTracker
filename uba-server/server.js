@@ -88,7 +88,18 @@ app.post("/uba", (req, res) => {
                 ev.deviceType ||
                 "";
 
-            events.push(ev);
+            ev.__rowId =
+                Date.now().toString() +
+                Math.random().toString(36).substring(2, 9);
+
+            const alreadyExists = events.some(
+                existing =>
+                    existing.__rowId === ev.__rowId
+            );
+
+            if (!alreadyExists) {
+                events.push(ev);
+            }
 
             io.emit(
                 "newEvent",
@@ -101,7 +112,18 @@ app.post("/uba", (req, res) => {
         newPayload.serverTimestamp =
             new Date().toLocaleString();
 
-        events.push(newPayload);
+        newPayload.__rowId =
+            Date.now().toString() +
+            Math.random().toString(36).substring(2, 9);
+
+        const alreadyExists = events.some(
+            existing =>
+                existing.__rowId === newPayload.__rowId
+        );
+
+        if (!alreadyExists) {
+            events.push(newPayload);
+        }
 
         io.emit(
             "newEvent",
@@ -130,6 +152,35 @@ app.delete("/clear", (req, res) => {
 });
 
 /* =========================================================
+   DELETE SELECTED EVENTS
+========================================================= */
+
+app.delete("/delete-selected", (req, res) => {
+
+    const ids = req.body.ids || [];
+
+    if (!Array.isArray(ids)) {
+
+        return res.status(400).send({
+            status: "error",
+            message: "ids must be array"
+        });
+    }
+
+    events = events.filter(event => {
+
+        return !ids.includes(event.__rowId);
+    });
+
+    io.emit("initialData", events);
+
+    res.send({
+        status: "ok",
+        deleted: ids.length
+    });
+});
+
+/* =========================================================
    EXPORT API
 ========================================================= */
 
@@ -144,7 +195,7 @@ app.get("/api/events", (req, res) => {
 
 app.get("/", (req, res) => {
 
-res.send(`
+    res.send(`
 
 <!DOCTYPE html>
 
@@ -173,10 +224,6 @@ body{
     color:#111827;
 }
 
-/* ======================================================
-   HEADER
-====================================================== */
-
 .header{
     margin-bottom:20px;
 }
@@ -187,10 +234,6 @@ body{
     color:#111827;
 }
 
-/* ======================================================
-   CARD
-====================================================== */
-
 .card{
     background:white;
     border-radius:14px;
@@ -199,10 +242,6 @@ body{
     border:1px solid #e5e7eb;
     box-shadow:0 2px 8px rgba(0,0,0,0.04);
 }
-
-/* ======================================================
-   TOP CONTROLS
-====================================================== */
 
 .top-controls{
     display:flex;
@@ -218,10 +257,6 @@ body{
     gap:10px;
     flex-wrap:wrap;
 }
-
-/* ======================================================
-   BUTTONS
-====================================================== */
 
 button{
     border:none;
@@ -285,10 +320,6 @@ button:hover{
     color:white;
 }
 
-/* ======================================================
-   INPUTS
-====================================================== */
-
 .search-box{
     width:320px;
     padding:11px;
@@ -307,10 +338,6 @@ textarea{
     font-size:14px;
     background:#fafafa;
 }
-
-/* ======================================================
-   STATS
-====================================================== */
 
 .stats{
     display:grid;
@@ -355,20 +382,12 @@ textarea{
     color:#6b7280;
 }
 
-/* ======================================================
-   FILTER BAR
-====================================================== */
-
 .filter-bar{
     display:flex;
     gap:10px;
     margin-bottom:16px;
     flex-wrap:wrap;
 }
-
-/* ======================================================
-   TABLE
-====================================================== */
 
 .table-wrapper{
     background:white;
@@ -399,7 +418,6 @@ td{
     font-size:14px;
 }
 
-
 .row-match{
     background:#ecfdf5;
 }
@@ -407,10 +425,6 @@ td{
 .row-mismatch{
     background:#fef2f2;
 }
-
-/* ======================================================
-   GROUP COLORS
-====================================================== */
 
 .group-yes{
     color:green;
@@ -421,10 +435,6 @@ td{
     color:red;
     font-weight:bold;
 }
-
-/* ======================================================
-   MODAL
-====================================================== */
 
 .modal{
     display:none;
@@ -470,9 +480,11 @@ pre{
     margin-bottom:10px;
 }
 
-/* ======================================================
-   RESPONSIVE
-====================================================== */
+.row-checkbox{
+    cursor:pointer;
+    width:16px;
+    height:16px;
+}
 
 @media(max-width:768px){
 
@@ -490,10 +502,6 @@ pre{
     }
 }
 
-/* ======================================================
-   STICKY EXPECTED JSON
-====================================================== */
-
 .sticky-expected{
     position: sticky;
     top: 10px;
@@ -506,10 +514,6 @@ pre{
 
 <body>
 
-<!-- =====================================================
-     HEADER
-===================================================== -->
-
 <div class="header">
 
 <div class="title">
@@ -517,10 +521,6 @@ pre{
 </div>
 
 </div>
-
-<!-- =====================================================
-     TOP CONTROLS
-===================================================== -->
 
 <div class="card">
 
@@ -571,13 +571,29 @@ placeholder="Filter deviceIds (comma or space separated)"
 <button
 class="success-btn"
 onclick="exportEvents()">
-📥 Export
+📥 Export All
+</button>
+
+<button
+class="primary-btn"
+onclick="exportSelected()"
+id="exportSelectedBtn"
+style="display:none;">
+📥 Export Selected
 </button>
 
 <button
 class="warning-btn"
 onclick="showMissingEvents()">
 ⚠ Missing
+</button>
+
+<button
+class="danger-btn"
+onclick="deleteSelected()"
+id="deleteSelectedBtn"
+style="display:none;">
+🗑 Delete Selected
 </button>
 
 <button
@@ -591,38 +607,6 @@ onclick="clearAll()">
 </div>
 
 </div>
-
-<!-- =====================================================
-     STATS
-===================================================== -->
-<!-- =====================================================
-<div class="stats">
-
-<div class="stat-box">
-<div class="stat-title">Total</div>
-<div id="totalCount" class="stat-value total">0</div>
-</div>
-
-<div class="stat-box">
-<div class="stat-title">Matched</div>
-<div id="matchCount" class="stat-value match">0</div>
-</div>
-
-<div class="stat-box">
-<div class="stat-title">Mismatch</div>
-<div id="mismatchCount" class="stat-value mismatch">0</div>
-</div>
-
-<div class="stat-box">
-<div class="stat-title">Normal</div>
-<div id="normalCount" class="stat-value normal">0</div>
-</div>
-
-</div>
-===================================================== -->
-<!-- =====================================================
-     EXPECTED JSON
-===================================================== -->
 
 <div class="card sticky-expected">
 
@@ -650,10 +634,6 @@ style="margin-left:10px;">
 </button>
 
 </div>
-
-<!-- =====================================================
-     FILTERS
-===================================================== -->
 
 <div id="filterBar" class="filter-bar">
 
@@ -687,10 +667,6 @@ Normal (0)
 
 </div>
 
-<!-- =====================================================
-     TABLE
-===================================================== -->
-
 <div class="table-wrapper">
 
 <table>
@@ -698,6 +674,13 @@ Normal (0)
 <thead>
 
 <tr>
+
+<th style="width:30px;">
+<input
+type="checkbox"
+id="selectAllCheckbox"
+onchange="toggleSelectAll()" />
+</th>
 
 <th>#</th>
 <th>Event Name</th>
@@ -718,10 +701,6 @@ Normal (0)
 </table>
 
 </div>
-
-<!-- =====================================================
-     EVENT MODAL
-===================================================== -->
 
 <div id="modal" class="modal">
 
@@ -748,10 +727,6 @@ onclick="closeModal()">
 </div>
 
 </div>
-
-<!-- =====================================================
-     MISSING MODAL
-===================================================== -->
 
 <div id="missingModal" class="modal">
 
@@ -785,9 +760,7 @@ let currentFilter = "all";
 
 let currentTab = "ios";
 
-/* =====================================================
-   TAB
-===================================================== */
+let selectedEventIds = new Set();
 
 function switchTab(e, tab){
 
@@ -821,36 +794,24 @@ function switchTab(e, tab){
     renderTable();
 }
 
-/* =====================================================
-   CLEAR EXPECTED JSON
-===================================================== */
-
 function clearExpectedJSON(){
 
-    // CLEAR MEMORY
     expectedEvents = [];
 
-    // CLEAR TEXTAREA
     document.getElementById(
         "expectedInput"
     ).value = "";
 
-    // CLEAR LOCAL STORAGE
     localStorage.removeItem(
         "expectedEvents"
     );
 
-    // REFRESH TABLE
     renderTable();
 
     showToast(
         "✅ Expected JSON Cleared"
     );
 }
-
-/* =====================================================
-   EXPECTED JSON
-===================================================== */
 
 function updateExpected(){
 
@@ -862,7 +823,6 @@ function updateExpected(){
             ).value || "[]"
         );
 
-         // SAVE TO LOCAL STORAGE
         localStorage.setItem(
             "expectedEvents",
             JSON.stringify(expectedEvents)
@@ -878,11 +838,7 @@ function updateExpected(){
 
         alert("❌ Invalid JSON");
     }
-   }
-
-/* =====================================================
-   TOAST POPUP
-===================================================== */
+}
 
 function showToast(message){
 
@@ -891,10 +847,10 @@ function showToast(message){
 
     toast.innerText = message;
 
-  toast.style.position = "fixed";
-toast.style.top = "20px";
-toast.style.left = "50%";
-toast.style.transform = "translateX(-50%)";
+    toast.style.position = "fixed";
+    toast.style.top = "20px";
+    toast.style.left = "50%";
+    toast.style.transform = "translateX(-50%)";
     toast.style.background = "#111827";
     toast.style.color = "white";
     toast.style.padding = "12px 18px";
@@ -922,10 +878,6 @@ toast.style.transform = "translateX(-50%)";
 
     }, 2000);
 }
-
-/* =====================================================
-   LOAD SAVED EXPECTED JSON
-===================================================== */
 
 function loadExpectedJSON(){
 
@@ -959,10 +911,6 @@ function loadExpectedJSON(){
     }
 }
 
-/* =====================================================
-   FILTER
-===================================================== */
-
 function setFilter(e, type){
 
     currentFilter = type;
@@ -983,10 +931,6 @@ function setFilter(e, type){
     renderTable();
 }
 
-/* =====================================================
-   PAGE MATCH
-===================================================== */
-
 function isPageNameMatch(
     expectedPage,
     actualPage
@@ -1006,10 +950,6 @@ function isPageNameMatch(
     );
 }
 
-/* =====================================================
-   EXPECTED MATCHES
-===================================================== */
-
 function getMatchingExpectedEvents(
     event
 ){
@@ -1028,10 +968,6 @@ function getMatchingExpectedEvents(
         );
     });
 }
-
-/* =====================================================
-   STATUS
-===================================================== */
 
 function getRowStatus(event){
 
@@ -1069,10 +1005,6 @@ function getRowStatus(event){
         ? "match"
         : "mismatch";
 }
-
-/* =====================================================
-   PLATFORM
-===================================================== */
 
 function getPlatform(event){
 
@@ -1114,16 +1046,12 @@ function matchesDeviceFilter(event) {
         return true;
     }
 
-    const eventDeviceId = String(event.deviceId || event.device_id || event.id || "")
+    const eventDeviceId = String(event.deviceId || "")
         .toLowerCase()
         .trim();
 
     return deviceIds.includes(eventDeviceId);
 }
-
-/* =====================================================
-   TAB EVENTS
-===================================================== */
 
 function getCurrentTabEvents(){
 
@@ -1153,24 +1081,9 @@ function getCurrentTabEvents(){
     return filtered;
 }
 
-/* =====================================================
-   STATS
-===================================================== */
-
-
-/* =====================================================
-   STATS
-===================================================== */
-
 function updateStats() {
 
-    // ALWAYS use all events
-    // so counts remain same across tabs
     let sourceEvents = [...allEvents].filter(matchesDeviceFilter);
-
-    /* =====================================================
-       SEARCH FILTER
-    ===================================================== */
 
     const search =
         document
@@ -1194,10 +1107,6 @@ function updateStats() {
             return text.includes(search);
         });
     }
-
-    /* =====================================================
-       COUNTS
-    ===================================================== */
 
     let match = 0;
     let mismatch = 0;
@@ -1223,42 +1132,6 @@ function updateStats() {
 
     const total = sourceEvents.length;
 
-    /* =====================================================
-       TAB STATS
-    ===================================================== */
-
-    const totalEl =
-    document.getElementById("totalCount");
-
-    const matchEl =
-    document.getElementById("matchCount");
-
-    const mismatchEl =
-    document.getElementById("mismatchCount"); 
-
-    const normalEl =
-    document.getElementById("normalCount");
-
-    if(totalEl){
-    totalEl.innerText = total;
-    }
-
-    if(matchEl){
-    matchEl.innerText = match;
-    }
-
-    if(mismatchEl){
-    mismatchEl.innerText = mismatch;
-    }
- 
-    if(normalEl){
-    normalEl.innerText = normal;
-    }
-
-    /* =====================================================
-       FILTER BUTTON COUNTS
-    ===================================================== */
-
     document.getElementById(
         "allBtn"
     ).innerText =
@@ -1279,77 +1152,6 @@ function updateStats() {
     ).innerText =
         "Normal (" + normal + ")";
 }
-
-
-/*
-
-function updateStats(filtered){
-
-    let match = 0;
-    let mismatch = 0;
-    let normal = 0;
-
-    filtered.forEach(event => {
-
-        const status =
-            getRowStatus(event);
-
-        if(status === "match"){
-            match++;
-        }
-        else if(
-            status === "mismatch"
-        ){
-            mismatch++;
-        }
-        else{
-            normal++;
-        }
-    });
-
-    const total = filtered.length;
-
-    document.getElementById(
-        "totalCount"
-    ).innerText = total;
-
-    document.getElementById(
-        "matchCount"
-    ).innerText = match;
-
-    document.getElementById(
-        "mismatchCount"
-    ).innerText = mismatch;
-
-    document.getElementById(
-        "normalCount"
-    ).innerText = normal;
-
-    document.getElementById(
-        "allBtn"
-    ).innerText =
-        "All (" + total + ")";
-
-    document.getElementById(
-        "matchBtn"
-    ).innerText =
-        "Matched (" + match + ")";
-
-    document.getElementById(
-        "mismatchBtn"
-    ).innerText =
-        "Mismatch (" + mismatch + ")";
-
-    document.getElementById(
-        "normalBtn"
-    ).innerText =
-        "Normal (" + normal + ")";
-}
-        */
-
-/* =====================================================
-   GROUPED TABLE
-===================================================== */
 
 function renderGroupedTable(
     tableBody
@@ -1383,18 +1185,6 @@ function renderGroupedTable(
 
             return text.includes(
                 search
-            );
-        });
-    }
-
-    if(currentFilter !== "all"){
-
-        filtered = filtered.filter(
-            event => {
-
-            return (
-                getRowStatus(event) ===
-                currentFilter
             );
         });
     }
@@ -1462,24 +1252,6 @@ function renderGroupedTable(
     const groupedItems =
         Object.values(grouped);
 
-    if(!groupedItems.length){
-
-        tableBody.innerHTML = \`
-
-        <tr>
-        <td colspan="9"
-        style="text-align:center;padding:20px;">
-        No Data Found
-        </td>
-        </tr>
-
-        \`;
-
-        updateStats([]);
-
-        return;
-    }
-
     groupedItems.forEach(
         (item, index) => {
 
@@ -1488,77 +1260,41 @@ function renderGroupedTable(
                 "tr"
             );
 
-        row.innerHTML = \`
-
-<td>\${index + 1}</td>
-
-<td>\${item.eventName}</td>
-
-<td>\${item.pageName}</td>
-
-<td>\${item.actionLabel}</td>
-
-<td>\${item.actionSrc}</td>
-
-<td>\${item.actionType}</td>
-
-<td>
-
-iOS:
-<span class="\${item.ios ? 'group-yes' : 'group-no'}">
-\${item.ios ? 'YES' : 'NO'}
-</span>
-
-<br/>
-
-Android:
-<span class="\${item.android ? 'group-yes' : 'group-no'}">
-\${item.android ? 'YES' : 'NO'}
-</span>
-
-<br/>
-
-Msite:
-<span class="\${item.msite ? 'group-yes' : 'group-no'}">
-\${item.msite ? 'YES' : 'NO'}
-</span>
-
-</td>
-
-<td>\${item.timestamp}</td>
-
-<td>
-<button class="view-more-btn">
-View More
-</button>
-</td>
-
-\`;
+        row.innerHTML =
+'<td></td>' +
+'<td>' + (index + 1) + '</td>' +
+'<td>' + item.eventName + '</td>' +
+'<td>' + item.pageName + '</td>' +
+'<td>' + item.actionLabel + '</td>' +
+'<td>' + item.actionSrc + '</td>' +
+'<td>' + item.actionType + '</td>' +
+'<td>iOS: <span class="' + (item.ios ? 'group-yes' : 'group-no') + '">' + (item.ios ? 'YES' : 'NO') + '</span><br/>Android: <span class="' + (item.android ? 'group-yes' : 'group-no') + '">' + (item.android ? 'YES' : 'NO') + '</span><br/>Msite: <span class="' + (item.msite ? 'group-yes' : 'group-no') + '">' + (item.msite ? 'YES' : 'NO') + '</span></td>' +
+'<td>' + item.timestamp + '</td>' +
+'<td><button class="view-more-btn">View More</button></td>';
 
         row.addEventListener(
             "click",
             (e) => {
 
-            if(
-                !e.target.classList.contains(
-                    "share-btn"
-                )
-            ){
-
-                openModal(
-                    item.rawEvents[0]
-                );
+            if (
+                e.target.classList.contains("view-more-btn")
+            ) {
+                return;
             }
+
+            openModal(
+                item.rawEvents[0]
+            );
         });
 
         row.querySelector(
-    ".view-more-btn"
-).onclick = (e) => {
+            ".view-more-btn"
+        ).onclick = (e) => {
 
-    e.stopPropagation();
+            e.stopPropagation();
 
-    openModal(event);
-};
+            openModal(item.rawEvents[0]);
+        };
 
         tableBody.appendChild(
             row
@@ -1568,10 +1304,6 @@ View More
     updateStats();
 }
 
-/* =====================================================
-   TABLE
-===================================================== */
-
 function renderTable(){
 
     const tableBody =
@@ -1580,6 +1312,17 @@ function renderTable(){
         );
 
     tableBody.innerHTML = "";
+
+    selectedEventIds.clear();
+
+    const selectAllCheckbox =
+    document.getElementById(
+        "selectAllCheckbox"
+    );
+
+    if(selectAllCheckbox){
+        selectAllCheckbox.checked = false;
+    }
 
     if(
         currentTab === "grouped"
@@ -1654,53 +1397,63 @@ function renderTable(){
             );
         }
 
-        row.innerHTML = \`
+        row.innerHTML =
+        '<td style="width:30px;">' +
+        '<input type="checkbox" class="row-checkbox" data-event-id="' + event.__rowId + '" />' +
+        '</td>' +
 
-<td>\${i + 1}</td>
+        '<td>' + (i + 1) + '</td>' +
+        '<td>' + (event.eventName || "-") + '</td>' +
+        '<td>' + (event.pageName || "-") + '</td>' +
+        '<td>' + (event.actionLabel || "-") + '</td>' +
+        '<td>' + (event.actionSrc || "-") + '</td>' +
+        '<td>' + (event.actionType || "-") + '</td>' +
+        '<td>' + getPlatform(event) + '</td>' +
+        '<td>' + (event.serverTimestamp || "-") + '</td>' +
+        '<td><button class="view-more-btn">View More</button></td>';
 
-<td>\${event.eventName || "-"}</td>
+        const checkbox =
+            row.querySelector(
+                ".row-checkbox"
+            );
 
-<td>\${event.pageName || "-"}</td>
-
-<td>\${event.actionLabel || "-"}</td>
-
-<td>\${event.actionSrc || "-"}</td>
-
-<td>\${event.actionType || "-"}</td>
-
-<td>\${getPlatform(event)}</td>
-
-<td>\${event.serverTimestamp || "-"}</td>
-
-<td>
-<button class="view-more-btn">
-View More
-</button>
-</td>
-
-\`;
-
-     row.addEventListener(
+        checkbox.addEventListener(
             "click",
             (e) => {
 
-            if(
-                !e.target.classList.contains(
-                    "share-btn"
-                )
-            ){
-                openModal(event);
+            e.stopPropagation();
+        });
+
+        checkbox.addEventListener(
+            "change",
+            () => {
+
+            toggleRowSelection(
+                checkbox
+            );
+        });
+
+        row.addEventListener(
+            "click",
+            (e) => {
+
+            if (
+                e.target.classList.contains("view-more-btn")
+            ) {
+                return;
             }
+
+            openModal(event);
         });
 
         row.querySelector(
-    ".view-more-btn"
-).onclick = (e) => {
+            ".view-more-btn"
+        ).onclick = (e) => {
 
-    e.stopPropagation();
+            e.stopPropagation();
 
-    openModal(event);
-};
+            openModal(event);
+        };
 
         tableBody.appendChild(
             row
@@ -1709,10 +1462,6 @@ View More
 
     updateStats();
 }
-
-/* =====================================================
-   MODAL
-===================================================== */
 
 function openModal(event){
 
@@ -1800,10 +1549,6 @@ function closeModal(){
     ).style.display = "none";
 }
 
-/* =====================================================
-   MISSING EVENTS
-===================================================== */
-
 function showMissingEvents(){
 
     const filteredEvents =
@@ -1869,27 +1614,210 @@ function closeMissingModal(){
     ).style.display = "none";
 }
 
-/* =====================================================
-   SHARE
-===================================================== */
+function toggleRowSelection(
+    checkbox
+) {
 
-function shareCurl(event){
+    const eventId =
+        checkbox.dataset.eventId;
 
-    const curl =
-\`curl -X POST http://localhost:3000/uba \\\\\\
--H "Content-Type: application/json" \\\\\\
--d '\${JSON.stringify(event)}'\`;
+    if (checkbox.checked) {
 
-    navigator.clipboard.writeText(
-        curl
-    );
+        selectedEventIds.add(
+            eventId
+        );
 
-    alert("✅ cURL copied");
+    } else {
+
+        selectedEventIds.delete(
+            eventId
+        );
+    }
+
+    updateSelectionUI();
 }
 
-/* =====================================================
-   EXPORT
-===================================================== */
+function toggleSelectAll() {
+
+    const selectAllCheckbox =
+        document.getElementById(
+            "selectAllCheckbox"
+        );
+
+    const rowCheckboxes =
+        document.querySelectorAll(
+            ".row-checkbox"
+        );
+
+    selectedEventIds.clear();
+
+    rowCheckboxes.forEach(
+        checkbox => {
+
+        checkbox.checked =
+            selectAllCheckbox.checked;
+
+        const eventId =
+            checkbox.dataset.eventId;
+
+        if (
+            selectAllCheckbox.checked
+        ) {
+
+            selectedEventIds.add(
+                eventId
+            );
+        }
+    });
+
+    updateSelectionUI();
+}
+
+function updateSelectionUI() {
+
+    const exportSelectedBtn =
+        document.getElementById(
+            "exportSelectedBtn"
+        );
+
+    const deleteSelectedBtn =
+        document.getElementById(
+            "deleteSelectedBtn"
+        );
+
+    const hasSelection =
+        selectedEventIds.size > 0;
+
+    exportSelectedBtn.style.display =
+        hasSelection
+        ? "inline-block"
+        : "none";
+
+    deleteSelectedBtn.style.display =
+        hasSelection
+        ? "inline-block"
+        : "none";
+}
+
+async function deleteSelected() {
+
+    if (selectedEventIds.size === 0) {
+
+        alert("❌ No rows selected");
+
+        return;
+    }
+
+    if (
+        !confirm(
+            "Delete selected rows?"
+        )
+    ) {
+        return;
+    }
+
+    const ids =
+        Array.from(selectedEventIds);
+
+    try {
+
+        await fetch(
+            "/delete-selected",
+            {
+                method: "DELETE",
+
+                headers: {
+                    "Content-Type":
+                    "application/json"
+                },
+
+                body: JSON.stringify({
+                    ids
+                })
+            }
+        );
+
+        allEvents =
+            allEvents.filter(event => {
+
+            return !selectedEventIds.has(
+                event.__rowId
+            );
+        });
+
+        selectedEventIds.clear();
+
+        updateSelectionUI();
+
+        renderTable();
+
+        showToast(
+            "✅ Selected rows deleted"
+        );
+
+    } catch (e) {
+
+        console.error(e);
+
+        alert(
+            "❌ Failed to delete rows"
+        );
+    }
+}
+
+function exportSelected() {
+
+    if (selectedEventIds.size === 0) {
+
+        alert("❌ No rows selected");
+
+        return;
+    }
+
+    const selectedData =
+        allEvents.filter(event => {
+
+        return selectedEventIds.has(
+            event.__rowId
+        );
+    });
+
+    const blob = new Blob(
+        [
+            JSON.stringify(
+                selectedData,
+                null,
+                2
+            )
+        ],
+        {
+            type: "application/json"
+        }
+    );
+
+    const url =
+        URL.createObjectURL(blob);
+
+    const a =
+        document.createElement("a");
+
+    a.href = url;
+
+    a.download =
+        "selected-events.json";
+
+    document.body.appendChild(a);
+
+    a.click();
+
+    a.remove();
+
+    URL.revokeObjectURL(url);
+
+    showToast(
+        "✅ Selected rows exported"
+    );
+}
 
 function exportEvents(){
 
@@ -1926,10 +1854,6 @@ function exportEvents(){
     URL.revokeObjectURL(url);
 }
 
-/* =====================================================
-   CLEAR
-===================================================== */
-
 function clearAll(){
 
     if(
@@ -1945,10 +1869,6 @@ function clearAll(){
     });
 }
 
-/* =====================================================
-   SOCKET EVENTS
-===================================================== */
-
 socket.on(
     "initialData",
     data => {
@@ -1963,7 +1883,15 @@ socket.on(
     "newEvent",
     event => {
 
-    allEvents.unshift(event);
+    const alreadyExists =
+        allEvents.some(
+            e => e.__rowId === event.__rowId
+        );
+
+    if (!alreadyExists) {
+
+        allEvents.unshift(event);
+    }
 
     renderTable();
 });
@@ -1976,10 +1904,6 @@ socket.on(
 
     renderTable();
 });
-
-/* =====================================================
-   SEARCH
-===================================================== */
 
 document
 .getElementById(
@@ -1999,7 +1923,6 @@ document
     renderTable
 );
 
-// LOAD SAVED DATA
 loadExpectedJSON();
 
 document.getElementById("modal").addEventListener("click", (e) => {
