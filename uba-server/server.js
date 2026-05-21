@@ -486,6 +486,58 @@ pre{
     height:16px;
 }
 
+.select-actions-cell{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    position:relative;
+}
+
+.selected-actions-wrapper{
+    position:relative;
+}
+
+.selected-actions-btn{
+    padding:7px 10px;
+    border-radius:8px;
+    background:#2563eb;
+    color:white;
+    font-size:12px;
+    white-space:nowrap;
+}
+
+.selected-actions-menu{
+    display:none;
+    position:absolute;
+    left:0;
+    top:calc(100% + 6px);
+    min-width:155px;
+    background:white;
+    border:1px solid #e5e7eb;
+    border-radius:10px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.12);
+    z-index:999;
+    overflow:hidden;
+}
+
+.selected-actions-menu.show{
+    display:block;
+}
+
+.selected-actions-menu button{
+    width:100%;
+    border-radius:0;
+    background:white;
+    color:#111827;
+    text-align:left;
+    padding:11px 14px;
+    font-size:14px;
+}
+
+.selected-actions-menu button:hover{
+    background:#f3f4f6;
+}
+
 @media(max-width:768px){
 
     .stats{
@@ -575,25 +627,9 @@ onclick="exportEvents()">
 </button>
 
 <button
-class="primary-btn"
-onclick="exportSelected()"
-id="exportSelectedBtn"
-style="display:none;">
-📥 Export Selected
-</button>
-
-<button
 class="warning-btn"
 onclick="showMissingEvents()">
 ⚠ Missing
-</button>
-
-<button
-class="danger-btn"
-onclick="deleteSelected()"
-id="deleteSelectedBtn"
-style="display:none;">
-🗑 Delete Selected
 </button>
 
 <button
@@ -675,11 +711,35 @@ Normal (0)
 
 <tr>
 
-<th style="width:30px;">
+<th style="width:115px;">
+<div class="select-actions-cell">
 <input
 type="checkbox"
 id="selectAllCheckbox"
 onchange="toggleSelectAll()" />
+
+<div
+class="selected-actions-wrapper"
+id="selectedActionsWrapper"
+style="display:none;">
+<button
+class="selected-actions-btn"
+onclick="toggleSelectedActionsDropdown(event)">
+Actions ▾
+</button>
+
+<div
+class="selected-actions-menu"
+id="selectedActionsMenu">
+<button onclick="handleSelectedExport(event)">
+📥 Export Selected
+</button>
+<button onclick="handleSelectedDelete(event)">
+🗑 Delete Selected
+</button>
+</div>
+</div>
+</div>
 </th>
 
 <th>#</th>
@@ -1324,6 +1384,8 @@ function renderTable(){
         selectAllCheckbox.checked = false;
     }
 
+    updateSelectionUI();
+
     if(
         currentTab === "grouped"
     ){
@@ -1398,7 +1460,7 @@ function renderTable(){
         }
 
         row.innerHTML =
-        '<td style="width:30px;">' +
+        '<td style="width:115px;">' +
         '<input type="checkbox" class="row-checkbox" data-event-id="' + event.__rowId + '" />' +
         '</td>' +
 
@@ -1675,28 +1737,84 @@ function toggleSelectAll() {
 
 function updateSelectionUI() {
 
-    const exportSelectedBtn =
+    const selectedActionsWrapper =
         document.getElementById(
-            "exportSelectedBtn"
+            "selectedActionsWrapper"
         );
 
-    const deleteSelectedBtn =
+    const selectedActionsMenu =
         document.getElementById(
-            "deleteSelectedBtn"
+            "selectedActionsMenu"
         );
 
     const hasSelection =
         selectedEventIds.size > 0;
 
-    exportSelectedBtn.style.display =
-        hasSelection
-        ? "inline-block"
-        : "none";
+    if (selectedActionsWrapper) {
 
-    deleteSelectedBtn.style.display =
-        hasSelection
-        ? "inline-block"
-        : "none";
+        selectedActionsWrapper.style.display =
+            hasSelection
+            ? "inline-block"
+            : "none";
+    }
+
+    if (!hasSelection && selectedActionsMenu) {
+
+        selectedActionsMenu.classList.remove(
+            "show"
+        );
+    }
+}
+
+function toggleSelectedActionsDropdown(event) {
+
+    event.stopPropagation();
+
+    const selectedActionsMenu =
+        document.getElementById(
+            "selectedActionsMenu"
+        );
+
+    if (!selectedActionsMenu) {
+        return;
+    }
+
+    selectedActionsMenu.classList.toggle(
+        "show"
+    );
+}
+
+function closeSelectedActionsDropdown() {
+
+    const selectedActionsMenu =
+        document.getElementById(
+            "selectedActionsMenu"
+        );
+
+    if (selectedActionsMenu) {
+
+        selectedActionsMenu.classList.remove(
+            "show"
+        );
+    }
+}
+
+function handleSelectedExport(event) {
+
+    event.stopPropagation();
+
+    closeSelectedActionsDropdown();
+
+    exportSelected();
+}
+
+function handleSelectedDelete(event) {
+
+    event.stopPropagation();
+
+    closeSelectedActionsDropdown();
+
+    deleteSelected();
 }
 
 async function deleteSelected() {
@@ -1931,9 +2049,26 @@ document.getElementById("modal").addEventListener("click", (e) => {
     }
 });
 
+document.addEventListener("click", (e) => {
+
+    const selectedActionsWrapper =
+        document.getElementById(
+            "selectedActionsWrapper"
+        );
+
+    if (
+        selectedActionsWrapper &&
+        !selectedActionsWrapper.contains(e.target)
+    ) {
+
+        closeSelectedActionsDropdown();
+    }
+});
+
 document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
         closeModal();
+        closeSelectedActionsDropdown();
     }
 });
 
