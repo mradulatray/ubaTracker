@@ -470,14 +470,38 @@ pre{
     overflow:auto;
 }
 
-.diff-match{
-    color:green;
-    margin-bottom:10px;
+.diff-table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:14px;
 }
 
-.diff-mismatch{
-    color:red;
-    margin-bottom:10px;
+.diff-table th,
+.diff-table td{
+    padding:12px 14px;
+    border:1px solid #e5e7eb;
+    text-align:left;
+    font-size:14px;
+}
+
+.diff-table th{
+    background:#f3f4f6;
+    color:#111827;
+}
+
+.diff-match-row{
+    background:#ecfdf5;
+    color:#134e4a;
+}
+
+.diff-mismatch-row{
+    background:#fee2e2;
+    color:#991b1b;
+}
+
+.diff-ignored-row{
+    background:#f3f4f6;
+    color:#6b7280;
 }
 
 .row-checkbox{
@@ -984,7 +1008,7 @@ function setFilter(e, type){
         );
     });
 
-    e.target.classList.add(
+     e.target.classList.add(
         "active"
     );
 
@@ -1530,84 +1554,193 @@ function renderTable(){
     updateStats();
 }
 
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 function openModal(event){
 
-    document.getElementById(
-        "modal"
-    ).style.display = "block";
+    document.getElementById("modal").style.display = "block";
 
-    document.getElementById(
-        "jsonView"
-    ).textContent =
-        JSON.stringify(
-            event,
-            null,
-            2
-        );
+    document.getElementById("jsonView").textContent =
+        JSON.stringify(event, null, 2);
 
-    const matches =
-        getMatchingExpectedEvents(
-            event
-        );
+    const matches = getMatchingExpectedEvents(event);
 
     let html = "";
 
-    if(!matches.length){
+    if (!matches.length) {
 
-        html =
-            "<p>No expected data found</p>";
+        html = "<p>No expected data found</p>";
 
-    }else{
+    } else {
 
-        const expected =
-            matches[0];
+        matches.forEach((expected, index) => {
 
-        Object.keys(expected)
-        .forEach(key => {
+            html +=
+                '<h3 style="margin-top:18px;margin-bottom:10px;">Expected Match #' +
+                (index + 1) +
+                '</h3>' +
+                '<table class="diff-table">' +
+                '<thead>' +
+                '<tr>' +
+                '<th>Key</th>' +
+                '<th>Expected</th>' +
+                '<th>Actual</th>' +
+                '<th>Status</th>' +
+                '</tr>' +
+                '</thead>' +
+                '<tbody>';
 
-            if(
-                expected[key] === null ||
-                expected[key] === undefined ||
-                expected[key] === ""
-            ){
+            Object.keys(expected).forEach(key => {
 
-                html += \`
-                <div class="diff-match">
-                ⚪ \${key}: ignored
-                </div>
-                \`;
+                const expectedValue = expected[key];
 
-                return;
-            }
+                const actualValue =
+                    event[key] !== undefined &&
+                    event[key] !== null
+                        ? String(event[key])
+                        : "";
 
-            if(
-                String(expected[key]) ===
-                String(event[key])
-            ){
+                if (
+                    expectedValue === null ||
+                    expectedValue === undefined ||
+                    expectedValue === ""
+                ) {
 
-                html += \`
-                <div class="diff-match">
-                ✅ \${key}: \${event[key]}
-                </div>
-                \`;
+                    html +=
+                        '<tr class="diff-ignored-row">' +
+                        '<td>' + escapeHtml(key) + '</td>' +
+                        '<td colspan="2">ignored</td>' +
+                        '<td>Ignored</td>' +
+                        '</tr>';
 
-            }else{
+                    return;
+                }
 
-                html += \`
-                <div class="diff-mismatch">
-                ❌ \${key}<br/>
-                Expected: \${expected[key]}<br/>
-                Actual: \${event[key]}
-                </div>
-                \`;
-            }
+                const expectedText = String(expectedValue);
+
+                const isMatch = expectedText === actualValue;
+
+                html +=
+                    '<tr class="' +
+                    (isMatch ? 'diff-match-row' : 'diff-mismatch-row') +
+                    '">' +
+                    '<td>' + escapeHtml(key) + '</td>' +
+                    '<td>' + escapeHtml(expectedText) + '</td>' +
+                    '<td>' + escapeHtml(actualValue) + '</td>' +
+                    '<td>' + (isMatch ? 'Matched' : 'Mismatched') + '</td>' +
+                    '</tr>';
+            });
+
+            html +=
+                '</tbody>' +
+                '</table>';
         });
     }
 
-    document.getElementById(
-        "diffView"
-    ).innerHTML = html;
+    document.getElementById("diffView").innerHTML = html;
 }
+
+// function openModal(event){
+
+//     document.getElementById(
+//         "modal"
+//     ).style.display = "block";
+
+//     document.getElementById(
+//         "jsonView"
+//     ).textContent =
+//         JSON.stringify(
+//             event,
+//             null,
+//             2
+//         );
+
+//     const matches =
+//         getMatchingExpectedEvents(
+//             event
+//         );
+
+//     let html = "";
+
+//     if(!matches.length){
+
+//         html =
+//             "<p>No expected data found</p>";
+
+//     }else{
+
+//         const expected =
+//             matches[0];
+
+//         html +=
+//             '<table class="diff-table">' +
+//             '<thead>' +
+//             '<tr>' +
+//             '<th>Key</th>' +
+//             '<th>Expected</th>' +
+//             '<th>Actual</th>' +
+//             '</tr>' +
+//             '</thead>' +
+//             '<tbody>';
+
+//         Object.keys(expected)
+//         .forEach(key => {
+
+//             const expectedValue =
+//                 expected[key];
+
+//             const actualValue =
+//                 event[key] !== undefined &&
+//                 event[key] !== null
+//                 ? String(event[key])
+//                 : "";
+
+//             if(
+//                 expectedValue === null ||
+//                 expectedValue === undefined ||
+//                 expectedValue === ""
+//             ){
+
+//                 html +=
+//                     '<tr class="diff-ignored-row">' +
+//                     '<td>' + key + '</td>' +
+//                     '<td colspan="2">ignored</td>' +
+//                     '</tr>';
+
+//                 return;
+//             }
+
+//             const expectedText =
+//                 String(expectedValue);
+
+//             const isMatch =
+//                 expectedText === actualValue;
+
+//             html +=
+//                 '<tr class="' +
+//                 (isMatch ? 'diff-match-row' : 'diff-mismatch-row') +
+//                 '">' +
+//                 '<td>' + key + '</td>' +
+//                 '<td>' + expectedText + '</td>' +
+//                 '<td>' + actualValue + '</td>' +
+//                 '</tr>';
+//         });
+
+//         html +=
+//             '</tbody>' +
+//             '</table>';
+
+//     document.getElementById(
+//         "diffView"
+//     ).innerHTML = html;
+// }
 
 function closeModal(){
 
