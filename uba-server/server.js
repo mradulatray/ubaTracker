@@ -1167,7 +1167,16 @@ function getCurrentTabEvents(){
 
 function updateStats() {
 
-    let sourceEvents = [...allEvents].filter(matchesDeviceFilter);
+    let sourceEvents = [];
+
+    if (currentTab === "grouped") {
+
+        sourceEvents = [...allEvents].filter(matchesDeviceFilter);
+
+    } else {
+
+        sourceEvents = getCurrentTabEvents();
+    }
 
     const search =
         document
@@ -1216,26 +1225,90 @@ function updateStats() {
 
     const total = sourceEvents.length;
 
-    document.getElementById(
-        "allBtn"
-    ).innerText =
+    document.getElementById("allBtn").innerText =
         "All (" + total + ")";
 
-    document.getElementById(
-        "matchBtn"
-    ).innerText =
+    document.getElementById("matchBtn").innerText =
         "Matched (" + match + ")";
 
-    document.getElementById(
-        "mismatchBtn"
-    ).innerText =
+    document.getElementById("mismatchBtn").innerText =
         "Mismatch (" + mismatch + ")";
 
-    document.getElementById(
-        "normalBtn"
-    ).innerText =
+    document.getElementById("normalBtn").innerText =
         "Normal (" + normal + ")";
 }
+
+// function updateStats() {
+
+//     let sourceEvents = [...allEvents].filter(matchesDeviceFilter);
+
+//     const search =
+//         document
+//         .getElementById("searchInput")
+//         .value
+//         .toLowerCase()
+//         .trim();
+
+//     if (search) {
+
+//         sourceEvents = sourceEvents.filter(event => {
+
+//             const text = (
+//                 (event.eventName || "") + " " +
+//                 (event.pageName || "") + " " +
+//                 (event.actionLabel || "") + " " +
+//                 (event.actionSrc || "") + " " +
+//                 (event.actionType || "")
+//             ).toLowerCase();
+
+//             return text.includes(search);
+//         });
+//     }
+
+//     let match = 0;
+//     let mismatch = 0;
+//     let normal = 0;
+
+//     sourceEvents.forEach(event => {
+
+//         const status = getRowStatus(event);
+
+//         if (status === "match") {
+
+//             match++;
+
+//         } else if (status === "mismatch") {
+
+//             mismatch++;
+
+//         } else {
+
+//             normal++;
+//         }
+//     });
+
+//     const total = sourceEvents.length;
+
+//     document.getElementById(
+//         "allBtn"
+//     ).innerText =
+//         "All (" + total + ")";
+
+//     document.getElementById(
+//         "matchBtn"
+//     ).innerText =
+//         "Matched (" + match + ")";
+
+//     document.getElementById(
+//         "mismatchBtn"
+//     ).innerText =
+//         "Mismatch (" + mismatch + ")";
+
+//     document.getElementById(
+//         "normalBtn"
+//     ).innerText =
+//         "Normal (" + normal + ")";
+// }
 
 function renderGroupedTable(
     tableBody
