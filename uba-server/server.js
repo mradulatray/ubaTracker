@@ -14,6 +14,13 @@ const io = new Server(server, {
 
 const port = 3000;
 
+const OpenAI = require("openai");
+require("dotenv").config();
+console.log("OPENAI key loaded:", !!process.env.OPENAI_API_KEY);
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+});
+
 app.use(express.json({ limit: "50mb" }));
 
 app.use(express.urlencoded({
@@ -36,6 +43,68 @@ io.on("connection", (socket) => {
         "initialData",
         events
     );
+});
+
+/* =========================================================
+   GENERATE SQL FROM EVENT JSON
+========================================================= */
+
+app.post("/generate-sql", async (req, res) => {
+
+    try {
+
+        if (!process.env.OPENAI_API_KEY) {
+            return res.status(500).send({
+                status: "error",
+                message: "OPENAI_API_KEY is missing. Check your .env file."
+            });
+        }
+
+        const eventJson = req.body;
+
+        const response = await openai.responses.create({
+            model: "gpt-4o-mini",
+            input: `
+You are a SQL query generator for Zeppelin.
+
+Convert the given JSON event into a Zeppelin-compatible SQL SELECT query.
+
+Rules:
+- Return only SQL.
+- Do not add explanation.
+- Use table name: uba_events.
+- Use important fields in WHERE clause.
+- Prefer these fields if available:
+  eventName, pageName, actionType, actionSrc, mediaSource, deviceId, appId, deviceType, eventId.
+- If value is null, use IS NULL.
+- Escape single quotes safely.
+- Do not use markdown.
+
+JSON:
+${JSON.stringify(eventJson, null, 2)}
+`
+        });
+
+        res.send({
+            status: "ok",
+            sql: response.output_text
+        });
+
+    } catch (error) {
+
+        console.error("OpenAI SQL generation failed");
+        console.error("Error message:", error.message);
+        console.error("Error status:", error.status);
+        console.error("Error code:", error.code);
+        console.error("Full error:", error);
+
+        res.status(500).send({
+            status: "error",
+            message: error.message || "Failed to generate SQL query",
+            code: error.code || null,
+            statusCode: error.status || null
+        });
+    }
 });
 
 /* =========================================================
@@ -796,11 +865,28 @@ onclick="closeModal()">
 &times;
 </span>
 
-<h2 style="margin-bottom:16px;">
-📦 Event JSON
-</h2>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:10px;flex-wrap:wrap;">
+
+    <h2>
+    📦 Event JSON
+    </h2>
+
+    <button
+    class="primary-btn"
+    id="createSqlBtn"
+    onclick="generateSqlQuery()">
+    🧠 Create SQL Query
+    </button>
+
+</div>
 
 <pre id="jsonView"></pre>
+
+<h2 style="margin-top:24px;margin-bottom:12px;">
+🧾 Generated SQL Query
+</h2>
+
+<pre id="sqlView">Click "Create SQL Query" to generate SQL.</pre>
 
 <h2 style="margin-top:24px;margin-bottom:12px;">
 🔍 Differences
@@ -845,6 +931,8 @@ let currentFilter = "all";
 let currentTab = "ios";
 
 let selectedEventIds = new Set();
+
+let currentModalEvent = null;
 
 function switchTab(e, tab){
 
@@ -1638,10 +1726,15 @@ function escapeHtml(value) {
 
 function openModal(event){
 
+    currentModalEvent = event;
+
     document.getElementById("modal").style.display = "block";
 
     document.getElementById("jsonView").textContent =
         JSON.stringify(event, null, 2);
+
+    document.getElementById("sqlView").textContent =
+    'Click "Create SQL Query" to generate SQL.';
 
     const matches = getMatchingExpectedEvents(event);
 
@@ -1718,6 +1811,64 @@ function openModal(event){
     }
 
     document.getElementById("diffView").innerHTML = html;
+}
+
+async function generateSqlQuery(){
+
+    if (!currentModalEvent) {
+
+        alert("❌ No event selected");
+
+        return;
+    }
+
+    const sqlView =
+        document.getElementById("sqlView");
+
+    const button =
+        document.getElementById("createSqlBtn");
+
+    try {
+
+        sqlView.textContent =
+            "Generating SQL query...";
+
+        button.disabled = true;
+        button.innerText = "Generating...";
+
+        const response = await fetch("/generate-sql", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(currentModalEvent)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || data.status !== "ok") {
+
+            throw new Error(
+                data.message || "Failed to generate SQL"
+            );
+        }
+
+        sqlView.textContent = data.sql;
+
+    } catch (error) {
+
+        console.error(error);
+
+        sqlView.textContent =
+            "❌ Failed to generate SQL query";
+
+        alert("❌ Failed to generate SQL query");
+
+    } finally {
+
+        button.disabled = false;
+        button.innerText = "🧠 Create SQL Query";
+    }
 }
 
 // function openModal(event){
