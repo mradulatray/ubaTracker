@@ -871,10 +871,16 @@ onclick="closeModal()">
 &times;
 </span>
 
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:10px;flex-wrap:wrap;">
+<h2 style="margin-bottom:16px;">
+📦 Event JSON
+</h2>
+
+<pre id="jsonView"></pre>
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:24px;margin-bottom:12px;gap:10px;flex-wrap:wrap;">
 
     <h2>
-    📦 Event JSON
+    🧾 Generated SQL Query
     </h2>
 
     <button
@@ -885,12 +891,6 @@ onclick="closeModal()">
     </button>
 
 </div>
-
-<pre id="jsonView"></pre>
-
-<h2 style="margin-top:24px;margin-bottom:12px;">
-🧾 Generated SQL Query
-</h2>
 
 <pre id="sqlView">Click "Create SQL Query" to generate SQL.</pre>
 
