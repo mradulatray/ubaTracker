@@ -60,7 +60,11 @@ app.post("/generate-sql", async (req, res) => {
             });
         }
 
-        const eventJson = req.body;
+        const eventJson =
+            req.body.event || req.body;
+
+        const customPrompt =
+            req.body.customPrompt || "";
 
         const response = await openai.responses.create({
             model: "gpt-4o-mini",
@@ -79,7 +83,7 @@ Rules:
 - If value is null, use IS NULL.
 - Escape single quotes safely.
 - Do not use markdown.
-
+${customPrompt ? `\nAdditional instructions from the user (these take priority over the defaults above):\n${customPrompt}\n` : ""}
 JSON:
 ${JSON.stringify(eventJson, null, 2)}
 `
@@ -877,7 +881,23 @@ onclick="closeModal()">
 
 <pre id="jsonView"></pre>
 
-<div style="display:flex;justify-content:space-between;align-items:center;margin-top:24px;margin-bottom:12px;gap:10px;flex-wrap:wrap;">
+<div style="margin-top:24px;">
+
+    <label
+    for="sqlPromptInput"
+    style="font-weight:600;font-size:14px;">
+    ✏️ Prompt for SQL Query (optional)
+    </label>
+
+    <textarea
+    id="sqlPromptInput"
+    placeholder="Describe how the SQL query should be generated, e.g. 'only select eventId and eventName' or 'use table uba_events_v2'"
+    rows="3">
+    </textarea>
+
+</div>
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;margin-bottom:12px;gap:10px;flex-wrap:wrap;">
 
     <h2>
     🧾 Generated SQL Query
@@ -1747,6 +1767,8 @@ function openModal(event){
     document.getElementById("sqlView").textContent =
     'Click "Create SQL Query" to generate SQL.';
 
+    document.getElementById("sqlPromptInput").value = "";
+
     const matches = getMatchingExpectedEvents(event);
 
     let html = "";
@@ -1847,12 +1869,18 @@ async function generateSqlQuery(){
         button.disabled = true;
         button.innerText = "Generating...";
 
+        const customPrompt =
+            document.getElementById("sqlPromptInput").value.trim();
+
         const response = await fetch("/generate-sql", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify(currentModalEvent)
+            body: JSON.stringify({
+                event: currentModalEvent,
+                customPrompt: customPrompt
+            })
         });
 
         const data = await response.json();
