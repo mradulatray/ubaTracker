@@ -157,6 +157,11 @@ app.post("/uba", (req, res) => {
                 ev.deviceType ||
                 "";
 
+            ev.api_response =
+                newPayload.api_response ||
+                ev.api_response ||
+                "";
+
             ev.__rowId =
                 Date.now().toString() +
                 Math.random().toString(36).substring(2, 9);
@@ -842,6 +847,7 @@ id="selectedActionsMenu">
 <th>Action Source</th>
 <th>Action Type</th>
 <th>Platform</th>
+<th>API Response</th>
 <th>Timestamp</th>
 <th>View More</th>
 
@@ -1463,6 +1469,9 @@ function renderGroupedTable(
                 timestamp:
                     event.serverTimestamp || "-",
 
+                api_response:
+                    event.api_response || "",
+
                 ios:false,
                 android:false,
                 msite:false,
@@ -1514,6 +1523,7 @@ function renderGroupedTable(
 '<td>' + item.actionSrc + '</td>' +
 '<td>' + item.actionType + '</td>' +
 '<td>iOS: <span class="' + (item.ios ? 'group-yes' : 'group-no') + '">' + (item.ios ? 'YES' : 'NO') + '</span><br/>Android: <span class="' + (item.android ? 'group-yes' : 'group-no') + '">' + (item.android ? 'YES' : 'NO') + '</span><br/>Msite: <span class="' + (item.msite ? 'group-yes' : 'group-no') + '">' + (item.msite ? 'YES' : 'NO') + '</span></td>' +
+'<td>' + (function(v){ var s=String(v||""); return s ? '<span style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;background:'+(s.toLowerCase()==="success"?"#dcfce7":"#fee2e2")+';color:'+(s.toLowerCase()==="success"?"#166534":"#991b1b")+'">' + s + '</span>' : "-"; })(item.api_response) + '</td>' +
 '<td>' + item.timestamp + '</td>' +
 '<td><button class="view-more-btn">View More</button></td>';
 
@@ -1656,6 +1666,7 @@ function renderTable(){
         '<td>' + (event.actionSrc || "-") + '</td>' +
         '<td>' + (event.actionType || "-") + '</td>' +
         '<td>' + getPlatform(event) + '</td>' +
+        '<td>' + (function(v){ var s=String(v||""); return s ? '<span style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;background:'+(s.toLowerCase()==="success"?"#dcfce7":"#fee2e2")+';color:'+(s.toLowerCase()==="success"?"#166534":"#991b1b")+'">' + s + '</span>' : "-"; })(event.api_response) + '</td>' +
         '<td>' + (event.serverTimestamp || "-") + '</td>' +
         '<td><button class="view-more-btn">View More</button></td>';
 
