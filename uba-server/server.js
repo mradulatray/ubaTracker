@@ -417,6 +417,41 @@ textarea{
     background:#fafafa;
 }
 
+.sql-buffer{
+    display:none;
+    align-items:center;
+    gap:10px;
+    padding:14px;
+    border-radius:10px;
+    background:#fafafa;
+    border:1px solid #d1d5db;
+    color:#6b7280;
+    font-size:14px;
+    margin-bottom:14px;
+}
+
+.spinner{
+    width:16px;
+    height:16px;
+    border:2px solid #d1d5db;
+    border-top-color:#2563eb;
+    border-radius:50%;
+    animation:spin 0.7s linear infinite;
+}
+
+@keyframes spin{
+    to{ transform:rotate(360deg); }
+}
+
+.fade-in{
+    animation:fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn{
+    from{ opacity:0; transform:translateY(-4px); }
+    to{ opacity:1; transform:translateY(0); }
+}
+
 .stats{
     display:grid;
     grid-template-columns:repeat(4,1fr);
@@ -899,20 +934,26 @@ onclick="closeModal()">
 
 <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;margin-bottom:12px;gap:10px;flex-wrap:wrap;">
 
-    <h2>
+    <h2 id="sqlHeaderTitle" style="margin:0;display:none;">
     🧾 Generated SQL Query
     </h2>
 
     <button
     class="primary-btn"
     id="createSqlBtn"
+    style="margin-left:auto;"
     onclick="generateSqlQuery()">
     🧠 Create SQL Query
     </button>
 
 </div>
 
-<pre id="sqlView">Click "Create SQL Query" to generate SQL.</pre>
+<div id="sqlLoadingBuffer" class="sql-buffer">
+    <div class="spinner"></div>
+    Loading...
+</div>
+
+<pre id="sqlView" style="display:none;"></pre>
 
 <h2 style="margin-top:24px;margin-bottom:12px;">
 🔍 Differences
@@ -1764,10 +1805,14 @@ function openModal(event){
     document.getElementById("jsonView").textContent =
         JSON.stringify(event, null, 2);
 
-    document.getElementById("sqlView").textContent =
-    'Click "Create SQL Query" to generate SQL.';
+    document.getElementById("sqlView").textContent = "";
+    document.getElementById("sqlView").style.display = "none";
+
+    document.getElementById("sqlHeaderTitle").style.display = "none";
 
     document.getElementById("sqlPromptInput").value = "";
+
+    document.getElementById("sqlLoadingBuffer").style.display = "none";
 
     const matches = getMatchingExpectedEvents(event);
 
@@ -1861,10 +1906,18 @@ async function generateSqlQuery(){
     const button =
         document.getElementById("createSqlBtn");
 
+    const buffer =
+        document.getElementById("sqlLoadingBuffer");
+
+    const headerTitle =
+        document.getElementById("sqlHeaderTitle");
+
     try {
 
-        sqlView.textContent =
-            "Generating SQL query...";
+        sqlView.style.display = "none";
+        sqlView.classList.remove("fade-in");
+
+        buffer.style.display = "flex";
 
         button.disabled = true;
         button.innerText = "Generating...";
@@ -1904,6 +1957,14 @@ async function generateSqlQuery(){
         alert("❌ Failed to generate SQL query");
 
     } finally {
+
+        buffer.style.display = "none";
+
+        headerTitle.style.display = "block";
+        headerTitle.classList.add("fade-in");
+
+        sqlView.style.display = "block";
+        sqlView.classList.add("fade-in");
 
         button.disabled = false;
         button.innerText = "🧠 Create SQL Query";
