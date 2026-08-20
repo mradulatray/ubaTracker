@@ -770,6 +770,12 @@ onclick="showMissingEvents()">
 </button>
 
 <button
+class="warning-btn"
+onclick="showDuplicateEvents()">
+🔁 Duplicate
+</button>
+
+<button
 class="danger-btn"
 onclick="clearAll()">
 🗑 Clear
@@ -980,6 +986,26 @@ onclick="closeMissingModal()">
 </h2>
 
 <div id="missingList"></div>
+
+</div>
+
+</div>
+
+<div id="duplicateModal" class="modal">
+
+<div class="modal-content">
+
+<span
+class="close"
+onclick="closeDuplicateModal()">
+&times;
+</span>
+
+<h2 style="margin-bottom:20px;">
+🔁 Duplicate Events
+</h2>
+
+<div id="duplicateList"></div>
 
 </div>
 
@@ -2135,6 +2161,80 @@ function closeMissingModal(){
 
     document.getElementById(
         "missingModal"
+    ).style.display = "none";
+}
+
+function showDuplicateEvents(){
+
+    const filteredEvents =
+        allEvents.filter(matchesDeviceFilter);
+
+    const groups = {};
+
+    filteredEvents.forEach(event => {
+
+        const key = (
+            (event.eventName || "") + "|" +
+            (event.pageName || "")
+        );
+
+        if(!groups[key]){
+            groups[key] = [];
+        }
+
+        groups[key].push(event);
+    });
+
+    const duplicateGroups =
+        Object.values(groups).filter(
+            group => group.length > 1
+        );
+
+    let html = "";
+
+    if(!duplicateGroups.length){
+
+        html =
+            "<p>✅ No duplicate events found</p>";
+
+    }else{
+
+        duplicateGroups.forEach(group => {
+
+            const item = group[0];
+
+            html += \`
+            <div style="margin-bottom:14px;color:#b45309;">
+            🔁 Event:
+            <b>\${item.eventName || "-"}</b>
+
+            |
+
+            Page:
+            <b>\${item.pageName || "-"}</b>
+
+            |
+
+            Count:
+            <b>\${group.length}</b>
+            </div>
+            \`;
+        });
+    }
+
+    document.getElementById(
+        "duplicateList"
+    ).innerHTML = html;
+
+    document.getElementById(
+        "duplicateModal"
+    ).style.display = "block";
+}
+
+function closeDuplicateModal(){
+
+    document.getElementById(
+        "duplicateModal"
     ).style.display = "none";
 }
 
