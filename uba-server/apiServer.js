@@ -655,6 +655,12 @@ tr:hover{
     overflow:auto;
 }
 
+.modal-header{
+    display:flex;
+    align-items:center;
+    gap:16px;
+}
+
 .close{
     float:right;
     font-size:28px;
@@ -922,9 +928,20 @@ onclick="closeModal()">
 &times;
 </span>
 
+<div class="modal-header">
+
 <h2>
 📦 API Call Detail
 </h2>
+
+<button
+class="primary-btn"
+id="shareCurlBtn"
+onclick="shareCurrentApiCallAsCurl()">
+📋 Share cURL
+</button>
+
+</div>
 
 <div id="apiOverview"></div>
 
@@ -1580,6 +1597,125 @@ async function replayCurrentApiCall() {
 
         button.disabled = false;
         button.innerText = "🔁 Re-hit API";
+    }
+}
+
+function shellQuote(value) {
+
+    // Close quote, emit a double-quoted ', reopen quote: ' -> '"'"'
+    const escapedQuote =
+        "'" + '"' + "'" + '"' + "'";
+
+    return "'" + String(value).split("'").join(escapedQuote) + "'";
+}
+
+function buildCurlCommand(apiCall) {
+
+    // Backslash/newline built at runtime so this script survives the server template literal
+    const lineBreak =
+        " " + String.fromCharCode(92) + String.fromCharCode(10) + "  ";
+
+    const method =
+        String(apiCall.method || "GET").toUpperCase();
+
+    const parts = [
+        "curl --location --request " + method + " " +
+        shellQuote(getCompleteUrl(apiCall))
+    ];
+
+    const headers =
+        apiCall.headers || {};
+
+    let hasCookieHeader = false;
+
+    Object.keys(headers).forEach((key) => {
+
+        if (key.toLowerCase() === "cookie") {
+            hasCookieHeader = true;
+        }
+
+        parts.push("--header " + shellQuote(key + ": " + headers[key]));
+    });
+
+    if (apiCall.cookies && !hasCookieHeader) {
+
+        const cookieValue =
+            typeof apiCall.cookies === "object"
+                ? Object.keys(apiCall.cookies)
+                    .map((key) => key + "=" + apiCall.cookies[key])
+                    .join("; ")
+                : String(apiCall.cookies);
+
+        parts.push("--header " + shellQuote("Cookie: " + cookieValue));
+    }
+
+    const requestBody =
+        decodeBase64Data(apiCall.httpBody);
+
+    const bodyText =
+        encodeBodyForReplay(requestBody);
+
+    if (bodyText) {
+        parts.push("--data-raw " + shellQuote(bodyText));
+    }
+
+    return parts.join(lineBreak);
+}
+
+async function copyTextToClipboard(text) {
+
+    if (navigator.clipboard && window.isSecureContext) {
+
+        await navigator.clipboard.writeText(text);
+
+        return;
+    }
+
+    // Fallback for non-secure origins (e.g. opened via LAN IP)
+    const textArea =
+        document.createElement("textarea");
+
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.opacity = "0";
+
+    document.body.appendChild(textArea);
+
+    textArea.select();
+
+    const copied =
+        document.execCommand("copy");
+
+    document.body.removeChild(textArea);
+
+    if (!copied) {
+        throw new Error("Copy command failed");
+    }
+}
+
+async function shareCurrentApiCallAsCurl() {
+
+    if (!currentModalApiCall) {
+
+        alert("❌ No API call selected");
+
+        return;
+    }
+
+    const curlCommand =
+        buildCurlCommand(currentModalApiCall);
+
+    try {
+
+        await copyTextToClipboard(curlCommand);
+
+        showToast("✅ cURL copied — paste it into Postman via Import");
+
+    } catch (error) {
+
+        console.error(error);
+
+        window.prompt("Copy the cURL command:", curlCommand);
     }
 }
 
