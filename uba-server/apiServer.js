@@ -1,6 +1,7 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
+const { fetch: undiciFetch, Agent } = require("undici");
 
 const app = express();
 
@@ -24,6 +25,14 @@ app.use(express.urlencoded({
 app.use(express.text({ limit: "100mb" }));
 
 let apiCalls = [];
+
+// Used when "Skip SSL verification" is ticked, e.g. staging hosts whose cert
+// does not list their hostname (same as Postman's SSL verification off / curl -k)
+const insecureAgent = new Agent({
+    connect: {
+        rejectUnauthorized: false
+    }
+});
 
 /* =========================================================
    SOCKET
@@ -104,7 +113,8 @@ app.post("/replay-api-call", async (req, res) => {
             method,
             url,
             headers,
-            body
+            body,
+            skipSslVerification
         } = req.body;
 
         if (!url) {
@@ -130,10 +140,35 @@ app.post("/replay-api-call", async (req, res) => {
             requestBody = body;
         }
 
-        const response = await fetch(url, {
+        // Captured headers like Content-Length no longer match an edited/pretty-printed
+        // body and make fetch reject the request, so let fetch compute these itself.
+        const headersToSkip = [
+            "content-length",
+            "host",
+            "connection",
+            "keep-alive",
+            "transfer-encoding",
+            "upgrade",
+            "expect",
+            "te"
+        ];
+
+        const outgoingHeaders = {};
+
+        Object.keys(headers || {}).forEach((key) => {
+
+            if (!headersToSkip.includes(key.toLowerCase())) {
+                outgoingHeaders[key] = String(headers[key]);
+            }
+        });
+
+        const response = await undiciFetch(url, {
             method: replayMethod,
-            headers: headers || {},
-            body: requestBody
+            headers: outgoingHeaders,
+            body: requestBody,
+            dispatcher: skipSslVerification
+                ? insecureAgent
+                : undefined
         });
 
         const responseText =
@@ -191,6 +226,12 @@ app.post("/replay-api-call", async (req, res) => {
 
     } catch (error) {
 
+        // fetch only says "fetch failed"; the real reason (DNS, TLS, refused...) is in error.cause
+        const errorMessage =
+            error.cause?.message
+                ? error.message + ": " + error.cause.message
+                : error.message;
+
         const duration =
             Date.now() - startedAt;
 
@@ -227,7 +268,7 @@ app.post("/replay-api-call", async (req, res) => {
             code: 0,
             responseHeaders: {},
             dataResponse: null,
-            errorClientDescription: error.message,
+            errorClientDescription: errorMessage,
             duration: duration,
             isReplayed: true,
             __rowId:
@@ -245,7 +286,7 @@ app.post("/replay-api-call", async (req, res) => {
 
         res.status(500).send({
             status: "error",
-            message: error.message,
+            message: errorMessage,
             apiCall: failedApiCall
         });
     }
@@ -1447,6 +1488,11 @@ function openApiCallModal(apiCall) {
         escapeHtml(bodyText) +
         '</textarea>' +
 
+        '<label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;">' +
+        '<input type="checkbox" id="replaySkipSsl" checked>' +
+        'Skip SSL certificate verification' +
+        '</label>' +
+
         '<button class="success-btn" id="replayApiBtn" onclick="replayCurrentApiCall()">' +
         '🔁 Re-hit API' +
         '</button>' +
@@ -1526,6 +1572,9 @@ async function replayCurrentApiCall() {
     const replayBody =
         document.getElementById("replayBody").value;
 
+    const skipSslVerification =
+        document.getElementById("replaySkipSsl").checked;
+
     if (!replayUrl) {
 
         alert("❌ URL is required");
@@ -1566,7 +1615,8 @@ async function replayCurrentApiCall() {
                 method: replayMethod,
                 url: replayUrl,
                 headers: replayHeaders,
-                body: replayBody
+                body: replayBody,
+                skipSslVerification: skipSslVerification
             })
         });
 
@@ -1582,7 +1632,8 @@ async function replayCurrentApiCall() {
 
         showToast("✅ API re-hit completed");
 
-        closeModal();
+        // Stay in the modal and show the replayed call so its response is visible
+        openApiCallModal(data.apiCall);
 
     } catch (error) {
 
